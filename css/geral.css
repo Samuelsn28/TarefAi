@@ -1,0 +1,26 @@
+
+:root {
+	--primary-color: #000000;
+	--secundary-color: #000000;
+	--positive-color: #000000; /* Um tipo de verde, ex.: botão confirmar */
+	--negative-color: #000000; /* Um tipo de vermelho, ex.: botão cancelar */
+	--inactive-color: #000000; /* ex.: um botão que não pode mais ser pressionado */
+	--background-color: #000000;
+
+	--border-default-radius: 8px;
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+html, body {
+	width: 100vw;
+	height: 100vh;
+}
+
+body {
+	overflow-x: hidden;
+}
