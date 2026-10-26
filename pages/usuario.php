@@ -9,6 +9,4 @@ class Usuario extends Queryable {
 	}
 }
 
-
-
 ?>

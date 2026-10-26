@@ -1,7 +1,5 @@
 <?php
 
-require_once __DIR__ . '/connection.php';
-
 abstract class Queryable {
 	
 	abstract protected function getTable(): string;
@@ -25,9 +23,6 @@ abstract class Queryable {
 
 	}
 
-	public static function funciona(): string {
-
-	}
 
 }
 
