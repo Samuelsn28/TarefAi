@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <main class="auth-container">
 
     <section class="auth-brand">
-        <div class="brand-logo">T</div>
+        <section class="brand-logo">T</section>
 
         <h1>TarefAi</h1>
 
@@ -130,17 +130,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             tarefas em resultados.
         </p>
 
-        <div class="brand-decoration">
+        <section class="brand-decoration">
             <span>✓</span>
             <span>Organização</span>
             <span>•</span>
             <span>Produtividade</span>
-        </div>
+        </section>
     </section>
 
     <section class="auth-card">
 
-        <div class="auth-heading">
+        <section class="auth-heading">
             <span class="eyebrow">COMECE AGORA</span>
 
             <h2>Criar sua conta</h2>
@@ -149,12 +149,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Preencha seus dados para entrar
                 no TarefAi.
             </p>
-        </div>
+        </section>
 
         <?php if ($erro): ?>
-            <div class="alert alert-error">
+            <section class="alert alert-error">
                 <?= htmlspecialchars($erro) ?>
-            </div>
+            </section>
         <?php endif; ?>
 
         <form method="POST" id="cadastroForm">
@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
             >
 
-            <div class="form-group">
+            <section class="form-group">
                 <label for="nome">Nome completo</label>
 
                 <input
@@ -178,9 +178,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     required
                     value="<?= htmlspecialchars($_POST['nome'] ?? '') ?>"
                 >
-            </div>
+            </section>
 
-            <div class="form-group">
+            <section class="form-group">
                 <label for="email">E-mail</label>
 
                 <input
@@ -193,12 +193,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     required
                     value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                 >
-            </div>
+            </section>
 
-            <div class="form-group">
+            <section class="form-group">
                 <label for="senha">Senha</label>
 
-                <div class="password-field">
+                <section class="password-field">
                     <input
                         type="password"
                         id="senha"
@@ -208,21 +208,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         autocomplete="new-password"
                         required
                     >
+                </section>
+            </section>
 
-                    <button type="button"
-                            class="toggle-password"
-                            data-target="senha">
-                        Mostrar
-                    </button>
-                </div>
-            </div>
-
-            <div class="form-group">
+            <section class="form-group">
                 <label for="confirmacao">
                     Confirmar senha
                 </label>
 
-                <div class="password-field">
+                <section class="password-field">
                     <input
                         type="password"
                         id="confirmacao"
@@ -232,14 +226,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         autocomplete="new-password"
                         required
                     >
-
-                    <button type="button"
-                            class="toggle-password"
-                            data-target="confirmacao">
-                        Mostrar
-                    </button>
-                </div>
-            </div>
+                </section>
+            </section>
 
             <button type="submit" class="btn-primary">
                 Criar minha conta

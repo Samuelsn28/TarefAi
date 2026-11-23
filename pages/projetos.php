@@ -11,138 +11,146 @@ exigirLogin();
 // =============================================
 
 $usuarioId = (int) $_SESSION['usuario_id'];
-$nomeUsuario = $_SESSION['nome'];
-$role = $_SESSION['role'];
-
-$isAdmin = ($role === 'admin');
+$nomeUsuario = $_SESSION['nome'] ?? 'Usuário';
+$isAdmin = (($_SESSION['role'] ?? '') === 'admin');
 
 // =============================================
 // FUNÇÕES AUXILIARES
 // =============================================
 
-function escapar($valor): string {
-    return htmlspecialchars(
-        (string) $valor,
-        ENT_QUOTES,
-        'UTF-8'
-    );
+function escapar($valor): string
+{
+    return htmlspecialchars((string) $valor, ENT_QUOTES, 'UTF-8');
 }
 
-function tamanhoTexto(string $texto): int {
+function tamanhoTexto(string $texto): int
+{
     return function_exists('mb_strlen')
         ? mb_strlen($texto, 'UTF-8')
         : strlen($texto);
 }
 
-// Usuário pode acessar projetos que criou
-// ou nos quais foi cadastrado como gestor.
+// =============================================
+// FILTROS DE ACESSO E PERMISSÕES
+// =============================================
 
-$filtroProjetos = "
-    (
-        p.id_usuario_criador = ?
-        OR EXISTS (
-            SELECT 1
-            FROM gestores_projeto gp
-            WHERE gp.id_projeto = p.id
-            AND gp.id_usuario = ?
-        )
+// Visibilidade: criador, gestor ou participante.
+$filtroProjetos = "(
+    p.id_usuario_criador = ?
+    OR EXISTS (
+        SELECT 1
+        FROM gestores_projeto gp
+        WHERE gp.id_projeto = p.id
+          AND gp.id_usuario = ?
     )
-";
+    OR EXISTS (
+        SELECT 1
+        FROM participantes_projeto pp
+        WHERE pp.id_projeto = p.id
+          AND pp.id_usuario = ?
+    )
+)";
 
-$parametrosAcesso = [$usuarioId, $usuarioId];
+$parametrosAcesso = [
+    $usuarioId,
+    $usuarioId,
+    $usuarioId
+];
+
+// Permissões de gerenciamento: somente criador ou gestor.
+$filtroGerenciamento = "(
+    p.id_usuario_criador = ?
+    OR EXISTS (
+        SELECT 1
+        FROM gestores_projeto gp
+        WHERE gp.id_projeto = p.id
+          AND gp.id_usuario = ?
+    )
+)";
+
+$parametrosGerenciamento = [
+    $usuarioId,
+    $usuarioId
+];
 
 // =============================================
-// VARIÁVEIS
+// VARIÁVEIS INICIAIS
 // =============================================
 
 $erro = '';
 $sucesso = '';
-
 $projetoEdicao = null;
-
 $nomeFormulario = '';
 
-$busca = trim($_GET['busca'] ?? '');
+$busca = trim((string) ($_GET['busca'] ?? ''));
 
-$pagina = filter_input(
-    INPUT_GET,
-    'pagina',
-    FILTER_VALIDATE_INT
-);
-
+$pagina = filter_input(INPUT_GET, 'pagina', FILTER_VALIDATE_INT);
 $pagina = max(1, (int) $pagina);
 
 $limite = 10;
 $totalProjetos = 0;
 $totalPaginas = 1;
+$offset = 0;
 $projetos = [];
 
 // =============================================
-// MENSAGENS
+// MENSAGENS DE SUCESSO
 // =============================================
 
 if (isset($_GET['sucesso'])) {
+    $mensagens = [
+        'criado' => 'Projeto cadastrado com sucesso!',
+        'editado' => 'Projeto atualizado com sucesso!',
+        'excluido' => 'Projeto excluído com sucesso!'
+    ];
 
-    switch ($_GET['sucesso']) {
-
-        case 'criado':
-            $sucesso = 'Projeto cadastrado com sucesso!';
-            break;
-
-        case 'editado':
-            $sucesso = 'Projeto atualizado com sucesso!';
-            break;
-
-        case 'excluido':
-            $sucesso = 'Projeto excluído com sucesso!';
-            break;
-    }
+    $sucesso = $mensagens[$_GET['sucesso']] ?? '';
 }
 
 // =============================================
-// PROCESSAMENTO DOS FORMULÁRIOS
+// PROCESSAMENTO DE FORMULÁRIOS
 // =============================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     verificarCSRF();
 
     $acao = $_POST['acao'] ?? '';
 
     // =========================================
-    // CADASTRAR PROJETO
+    // CRIAR PROJETO
     // =========================================
 
     if ($acao === 'criar') {
+        $nome = trim((string) ($_POST['nome'] ?? ''));
 
-        $nome = trim($_POST['nome'] ?? '');
-
-        if (
-            $nome === '' ||
-            tamanhoTexto($nome) > 150
-        ) {
-
+        if ($nome === '' || tamanhoTexto($nome) > 150) {
             $erro = 'Informe um nome válido de até 150 caracteres.';
-
             $nomeFormulario = $nome;
-
         } else {
-
             try {
-
                 $pdo->beginTransaction();
 
-                $stmt = $pdo->prepare("
-                    INSERT INTO projetos (
-                        nome,
-                        id_usuario_criador
-                    )
-                    VALUES (?, ?)
-                ");
+                $stmt = $pdo->prepare(
+                    'INSERT INTO projetos (nome, id_usuario_criador)
+                     VALUES (?, ?)'
+                );
 
                 $stmt->execute([
                     $nome,
                     $usuarioId
+                ]);
+
+                $idNovoProjeto = (int) $pdo->lastInsertId();
+
+                // O criador também é registrado como participante do projeto.
+                $stmtParticipante = $pdo->prepare(
+                    'INSERT INTO participantes_projeto (id_usuario, id_projeto)
+                     VALUES (?, ?)'
+                );
+
+                $stmtParticipante->execute([
+                    $usuarioId,
+                    $idNovoProjeto
                 ]);
 
                 $pdo->commit();
@@ -151,147 +159,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
 
             } catch (PDOException $e) {
-
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
 
                 error_log($e->getMessage());
 
-                $erro = 'Não foi possível cadastrar o projeto. Tente novamente.';
-
+                $erro = 'Não foi possível cadastrar o projeto. Verifique se a tabela participantes_projeto foi criada.';
                 $nomeFormulario = $nome;
             }
         }
-    }
 
     // =========================================
-    // EDITAR PROJETO
+    // EDITAR OU EXCLUIR PROJETO
     // =========================================
 
-    elseif ($acao === 'editar') {
-
-        $idProjeto = filter_var(
-            $_POST['id_projeto'] ?? null,
-            FILTER_VALIDATE_INT
-        );
-
-        $nome = trim($_POST['nome'] ?? '');
-
-        if (!$idProjeto || $idProjeto <= 0) {
-
-            $erro = 'Projeto inválido.';
-
-        } elseif (
-            $nome === '' ||
-            tamanhoTexto($nome) > 150
-        ) {
-
-            $erro = 'Informe um nome válido de até 150 caracteres.';
-
-            $projetoEdicao = [
-                'id' => $idProjeto,
-                'nome' => $nome
-            ];
-
-        } else {
-
-            try {
-
-                // Verifica se o usuário participa do projeto.
-
-                $stmt = $pdo->prepare("
-                    SELECT p.id
-                    FROM projetos p
-                    WHERE p.id = ?
-                    AND $filtroProjetos
-                    LIMIT 1
-                ");
-
-                $stmt->execute(array_merge(
-                    [$idProjeto],
-                    $parametrosAcesso
-                ));
-
-                if (!$stmt->fetch()) {
-
-                    $erro = 'Você não tem permissão para editar este projeto.';
-
-                } else {
-
-                    $stmt = $pdo->prepare("
-                        UPDATE projetos
-                        SET nome = ?
-                        WHERE id = ?
-                    ");
-
-                    $stmt->execute([
-                        $nome,
-                        $idProjeto
-                    ]);
-
-                    header('Location: projetos.php?sucesso=editado');
-                    exit;
-                }
-
-            } catch (PDOException $e) {
-
-                error_log($e->getMessage());
-
-                $erro = 'Não foi possível atualizar o projeto.';
-
-                $projetoEdicao = [
-                    'id' => $idProjeto,
-                    'nome' => $nome
-                ];
-            }
-        }
-    }
-
-    // =========================================
-    // EXCLUIR PROJETO
-    // =========================================
-
-    elseif ($acao === 'excluir') {
-
+    } elseif ($acao === 'editar' || $acao === 'excluir') {
         $idProjeto = filter_var(
             $_POST['id_projeto'] ?? null,
             FILTER_VALIDATE_INT
         );
 
         if (!$idProjeto || $idProjeto <= 0) {
-
             $erro = 'Projeto inválido.';
-
         } else {
-
             try {
+                // Verifica se o usuário pode gerenciar o projeto.
+                $stmt = $pdo->prepare(
+                    "SELECT p.id
+                     FROM projetos p
+                     WHERE p.id = ?
+                       AND $filtroGerenciamento
+                     LIMIT 1"
+                );
 
-                // Verifica a permissão antes de excluir.
+                $stmt->execute(
+                    array_merge(
+                        [$idProjeto],
+                        $parametrosGerenciamento
+                    )
+                );
 
-                $stmt = $pdo->prepare("
-                    SELECT p.id
-                    FROM projetos p
-                    WHERE p.id = ?
-                    AND $filtroProjetos
-                    LIMIT 1
-                ");
+                if (!$stmt->fetchColumn()) {
+                    $erro = 'Somente o criador ou um gestor pode '
+                        . ($acao === 'editar' ? 'editar' : 'excluir')
+                        . ' este projeto.';
 
-                $stmt->execute(array_merge(
-                    [$idProjeto],
-                    $parametrosAcesso
-                ));
+                // =================================
+                // EDITAR PROJETO
+                // =================================
 
-                if (!$stmt->fetch()) {
+                } elseif ($acao === 'editar') {
+                    $nome = trim((string) ($_POST['nome'] ?? ''));
 
-                    $erro = 'Você não tem permissão para excluir este projeto.';
+                    if ($nome === '' || tamanhoTexto($nome) > 150) {
+                        $erro = 'Informe um nome válido de até 150 caracteres.';
+
+                        $projetoEdicao = [
+                            'id' => $idProjeto,
+                            'nome' => $nome
+                        ];
+
+                    } else {
+                        $stmt = $pdo->prepare(
+                            'UPDATE projetos
+                             SET nome = ?
+                             WHERE id = ?'
+                        );
+
+                        $stmt->execute([
+                            $nome,
+                            $idProjeto
+                        ]);
+
+                        header('Location: projetos.php?sucesso=editado');
+                        exit;
+                    }
+
+                // =================================
+                // EXCLUIR PROJETO
+                // =================================
 
                 } else {
-
-                    $stmt = $pdo->prepare("
-                        DELETE FROM projetos
-                        WHERE id = ?
-                    ");
+                    $stmt = $pdo->prepare(
+                        'DELETE FROM projetos
+                         WHERE id = ?'
+                    );
 
                     $stmt->execute([$idProjeto]);
 
@@ -300,10 +253,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
             } catch (PDOException $e) {
-
                 error_log($e->getMessage());
 
-                $erro = 'Não foi possível excluir o projeto.';
+                $erro = 'Não foi possível concluir a operação.';
             }
         }
     }
@@ -313,97 +265,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // CARREGAR PROJETO PARA EDIÇÃO
 // =============================================
 
-if (
-    isset($_GET['editar']) &&
-    !$projetoEdicao
-) {
-
+if (isset($_GET['editar']) && !$projetoEdicao) {
     $idEditar = filter_var(
         $_GET['editar'],
         FILTER_VALIDATE_INT
     );
 
     if (!$idEditar || $idEditar <= 0) {
-
         $erro = 'Projeto inválido.';
-
     } else {
-
         try {
+            $stmt = $pdo->prepare(
+                "SELECT p.id, p.nome
+                 FROM projetos p
+                 WHERE p.id = ?
+                   AND $filtroGerenciamento
+                 LIMIT 1"
+            );
 
-            $stmt = $pdo->prepare("
-                SELECT
-                    p.id,
-                    p.nome
-                FROM projetos p
-                WHERE p.id = ?
-                AND $filtroProjetos
-                LIMIT 1
-            ");
+            $stmt->execute(
+                array_merge(
+                    [$idEditar],
+                    $parametrosGerenciamento
+                )
+            );
 
-            $stmt->execute(array_merge(
-                [$idEditar],
-                $parametrosAcesso
-            ));
-
-            $projetoEdicao = $stmt->fetch();
+            $projetoEdicao = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
             if (!$projetoEdicao) {
-                $erro = 'Projeto não encontrado ou sem permissão de acesso.';
+                $erro = 'Projeto não encontrado ou você não tem permissão para editá-lo.';
             }
 
         } catch (PDOException $e) {
-
             error_log($e->getMessage());
 
-            $erro = 'Não foi possível carregar o projeto.';
+            $erro = 'Não foi possível carregar o projeto para edição.';
         }
     }
 }
 
 // =============================================
-// LISTAR PROJETOS
+// BUSCAR E LISTAR PROJETOS
 // =============================================
 
 try {
-
-    // -----------------------------------------
-    // FILTRO DE PESQUISA
-    // -----------------------------------------
-
     $filtroBusca = '';
-
     $parametrosConsulta = $parametrosAcesso;
 
     if ($busca !== '') {
-
-        $filtroBusca = "
-            AND p.nome LIKE ?
-        ";
+        $filtroBusca = ' AND p.nome LIKE ?';
 
         $parametrosConsulta[] = '%' . $busca . '%';
     }
 
-    // -----------------------------------------
-    // TOTAL DE PROJETOS
-    // -----------------------------------------
+    // =========================================
+    // CONTAR PROJETOS
+    // =========================================
 
-    $sql = "
-        SELECT COUNT(*)
-        FROM projetos p
-        WHERE $filtroProjetos
-        $filtroBusca
-    ";
-
-    $stmt = $pdo->prepare($sql);
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM projetos p
+         WHERE $filtroProjetos
+         $filtroBusca"
+    );
 
     $stmt->execute($parametrosConsulta);
 
     $totalProjetos = (int) $stmt->fetchColumn();
 
-    // -----------------------------------------
+    // =========================================
     // PAGINAÇÃO
-    // -----------------------------------------
+    // =========================================
 
     $totalPaginas = max(
         1,
@@ -414,51 +346,56 @@ try {
 
     $offset = ($pagina - 1) * $limite;
 
-    // -----------------------------------------
-    // BUSCAR PROJETOS
-    // -----------------------------------------
+    // =========================================
+    // CONSULTA DOS PROJETOS
+    // =========================================
 
-    $sql = "
-        SELECT
-            p.id,
-            p.nome,
-            p.id_usuario_criador,
+    $sql = "SELECT
+                p.id,
+                p.nome,
+                p.id_usuario_criador,
 
-            (
-                SELECT COUNT(*)
-                FROM tarefas t
-                WHERE t.id_projeto = p.id
-            ) AS total_tarefas,
+                (
+                    SELECT COUNT(*)
+                    FROM tarefas t
+                    WHERE t.id_projeto = p.id
+                ) AS total_tarefas,
 
-            (
-                SELECT COUNT(*)
-                FROM tarefas t
-                WHERE t.id_projeto = p.id
-                AND t.completo_em IS NOT NULL
-            ) AS tarefas_concluidas
+                CASE
+                    WHEN p.id_usuario_criador = ?
+                    OR EXISTS (
+                        SELECT 1
+                        FROM gestores_projeto gp
+                        WHERE gp.id_projeto = p.id
+                          AND gp.id_usuario = ?
+                    )
+                    THEN 1
+                    ELSE 0
+                END AS pode_gerenciar
 
-        FROM projetos p
+            FROM projetos p
 
-        WHERE $filtroProjetos
+            WHERE $filtroProjetos
+            $filtroBusca
 
-        $filtroBusca
-
-        ORDER BY p.id DESC
-
-        LIMIT $limite OFFSET $offset
-    ";
+            ORDER BY p.id DESC
+            LIMIT $limite OFFSET $offset";
 
     $stmt = $pdo->prepare($sql);
 
-    $stmt->execute($parametrosConsulta);
+    $stmt->execute(
+        array_merge(
+            [$usuarioId, $usuarioId],
+            $parametrosConsulta
+        )
+    );
 
-    $projetos = $stmt->fetchAll();
+    $projetos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-
     error_log($e->getMessage());
 
-    $erro = 'Não foi possível carregar os projetos.';
+    $erro = 'Não foi possível carregar os projetos. Confirme se a tabela participantes_projeto existe.';
 
     $projetos = [];
 }
@@ -467,7 +404,7 @@ try {
 // TOKEN CSRF
 // =============================================
 
-$csrfToken = $_SESSION['csrf_token'];
+$csrfToken = $_SESSION['csrf_token'] ?? '';
 
 ?>
 
@@ -475,23 +412,14 @@ $csrfToken = $_SESSION['csrf_token'];
 <html lang="pt-BR">
 
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Projetos | TarefAi</title>
 
-    <link rel="stylesheet"
-          href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
 
     <style>
-
-        /* =====================================
-           ÁREA DE PROJETOS
-        ===================================== */
-
         .projects-toolbar {
             display: flex;
             align-items: center;
@@ -510,27 +438,6 @@ $csrfToken = $_SESSION['csrf_token'];
             color: #64748b;
             font-size: 14px;
         }
-
-        .btn-add-project {
-            border: none;
-            background: #635bdb;
-            color: #fff;
-            padding: 12px 19px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: .2s;
-        }
-
-        .btn-add-project:hover {
-            background: #5048c7;
-        }
-
-        /* =====================================
-           FORMULÁRIO
-        ===================================== */
 
         .project-form-card {
             background: #fff;
@@ -562,7 +469,8 @@ $csrfToken = $_SESSION['csrf_token'];
             font-weight: 600;
         }
 
-        .project-form input {
+        .project-form input,
+        .search-form input {
             width: 100%;
             padding: 12px 14px;
             border: 1px solid #dce2ea;
@@ -571,20 +479,23 @@ $csrfToken = $_SESSION['csrf_token'];
             font-size: 14px;
         }
 
-        .project-form input:focus {
+        .project-form input:focus,
+        .search-form input:focus {
             border-color: #635bdb;
             box-shadow: 0 0 0 3px rgba(99, 91, 219, .1);
         }
 
-        .form-actions {
+        .form-actions,
+        .project-actions {
             display: flex;
-            gap: 10px;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-submit {
             background: #635bdb;
             color: #fff;
-            border: none;
+            border: 0;
             border-radius: 9px;
             padding: 12px 20px;
             cursor: pointer;
@@ -600,10 +511,6 @@ $csrfToken = $_SESSION['csrf_token'];
             font-size: 14px;
         }
 
-        /* =====================================
-           PESQUISA
-        ===================================== */
-
         .search-form {
             display: flex;
             gap: 10px;
@@ -613,29 +520,16 @@ $csrfToken = $_SESSION['csrf_token'];
         .search-form input {
             flex: 1;
             min-width: 0;
-            padding: 12px 15px;
-            border: 1px solid #e2e8f0;
-            border-radius: 9px;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .search-form input:focus {
-            border-color: #635bdb;
         }
 
         .btn-search {
             background: #334155;
             color: #fff;
-            border: none;
+            border: 0;
             padding: 12px 19px;
             border-radius: 9px;
             cursor: pointer;
         }
-
-        /* =====================================
-           TABELA / LISTA
-        ===================================== */
 
         .projects-table-wrapper {
             overflow-x: auto;
@@ -644,7 +538,7 @@ $csrfToken = $_SESSION['csrf_token'];
         .projects-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 650px;
+            min-width: 560px;
         }
 
         .projects-table th {
@@ -661,10 +555,6 @@ $csrfToken = $_SESSION['csrf_token'];
             padding: 17px 15px;
             border-bottom: 1px solid #edf0f4;
             font-size: 14px;
-        }
-
-        .projects-table tr:last-child td {
-            border-bottom: none;
         }
 
         .project-name {
@@ -695,48 +585,6 @@ $csrfToken = $_SESSION['csrf_token'];
             margin-top: 4px;
         }
 
-        .task-count {
-            color: #475569;
-        }
-
-        .progress-container {
-            width: 100px;
-        }
-
-        .progress-text {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 6px;
-        }
-
-        .progress-bar {
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: #22c55e;
-            border-radius: 10px;
-        }
-
-        .project-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .action-access {
-            background: #ecfdf5;
-            color: #059669;
-        }
-
-        .action-access:hover {
-            background: #d1fae5;
-        }
-
         .action-link {
             display: inline-block;
             padding: 7px 10px;
@@ -744,6 +592,11 @@ $csrfToken = $_SESSION['csrf_token'];
             text-decoration: none;
             font-size: 12px;
             font-weight: 600;
+        }
+
+        .action-access {
+            background: #ecfdf5;
+            color: #059669;
         }
 
         .action-edit {
@@ -754,7 +607,7 @@ $csrfToken = $_SESSION['csrf_token'];
         .action-delete {
             background: #fef2f2;
             color: #dc2626;
-            border: none;
+            border: 0;
             cursor: pointer;
         }
 
@@ -762,9 +615,11 @@ $csrfToken = $_SESSION['csrf_token'];
             display: inline;
         }
 
-        /* =====================================
-           ALERTAS
-        ===================================== */
+        .permission-label {
+            font-size: 11px;
+            color: #64748b;
+            white-space: nowrap;
+        }
 
         .alert-success,
         .alert-error {
@@ -784,10 +639,6 @@ $csrfToken = $_SESSION['csrf_token'];
             background: #fee2e2;
         }
 
-        /* =====================================
-           ESTADO VAZIO
-        ===================================== */
-
         .empty-state {
             text-align: center;
             padding: 45px 20px;
@@ -799,14 +650,6 @@ $csrfToken = $_SESSION['csrf_token'];
             display: block;
             margin-bottom: 12px;
         }
-
-        .empty-state p {
-            font-size: 14px;
-        }
-
-        /* =====================================
-           PAGINAÇÃO
-        ===================================== */
 
         .pagination {
             display: flex;
@@ -830,10 +673,6 @@ $csrfToken = $_SESSION['csrf_token'];
             color: #475569;
         }
 
-        .pagination a:hover {
-            background: #e2e8f0;
-        }
-
         .pagination .current {
             background: #635bdb;
             color: #fff;
@@ -847,12 +686,7 @@ $csrfToken = $_SESSION['csrf_token'];
             margin-top: 15px;
         }
 
-        /* =====================================
-           RESPONSIVIDADE
-        ===================================== */
-
         @media (max-width: 768px) {
-
             .projects-toolbar {
                 align-items: flex-start;
             }
@@ -866,8 +700,7 @@ $csrfToken = $_SESSION['csrf_token'];
                 width: 100%;
             }
 
-            .form-actions button,
-            .form-actions a {
+            .form-actions > * {
                 flex: 1;
                 text-align: center;
             }
@@ -883,11 +716,8 @@ $csrfToken = $_SESSION['csrf_token'];
             .search-form button {
                 flex: 1;
             }
-
         }
-
     </style>
-
 </head>
 
 <body>
@@ -895,117 +725,12 @@ $csrfToken = $_SESSION['csrf_token'];
 <div class="dashboard-container">
 
     <!-- =====================================
-         MENU LATERAL
+         BARRA LATERAL
     ====================================== -->
 
-    <aside class="sidebar">
-
-        <div class="sidebar-brand">
-
-            <div class="brand-logo">T</div>
-
-            <span>TarefAi</span>
-
-        </div>
-
-        <nav class="sidebar-nav">
-
-            <span class="nav-label">
-                MENU PRINCIPAL
-            </span>
-
-            <a href="dashboard.php" class="nav-item">
-
-                <span class="nav-icon">▦</span>
-
-                Dashboard
-
-            </a>
-
-            <a href="projetos.php" class="nav-item active">
-
-                <span class="nav-icon">▣</span>
-
-                Projetos
-
-            </a>
-
-            <a href="tarefas.php" class="nav-item">
-
-                <span class="nav-icon">☑</span>
-
-                Tarefas
-
-            </a>
-
-            <a href="categorias.php" class="nav-item">
-
-                <span class="nav-icon">◈</span>
-
-                Categorias
-
-            </a>
-
-            <?php if ($isAdmin): ?>
-
-                <span class="nav-label">
-                    ADMINISTRAÇÃO
-                </span>
-
-                <a href="usuarios.php" class="nav-item">
-
-                    <span class="nav-icon">♙</span>
-
-                    Usuários
-
-                </a>
-
-            <?php endif; ?>
-
-        </nav>
-
-        <!-- USUÁRIO LOGADO -->
-
-        <div class="sidebar-bottom">
-
-            <div class="sidebar-user">
-
-                <div class="user-avatar">
-
-                    <?= escapar(
-                        strtoupper(substr($nomeUsuario, 0, 1))
-                    ) ?>
-
-                </div>
-
-                <div class="user-info">
-
-                    <strong>
-                        <?= escapar($nomeUsuario) ?>
-                    </strong>
-
-                    <span>
-                        <?= $isAdmin
-                            ? 'Administrador'
-                            : 'Usuário' ?>
-                    </span>
-
-                </div>
-
-            </div>
-
-            <a href="logout.php" class="logout-link">
-
-                <span>↪</span>
-
-                Sair da conta
-
-            </a>
-
-        </div>
-
-    </aside>
-
+    <?php
+        require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/components/sidebar.php';
+    ?>
 
     <!-- =====================================
          CONTEÚDO PRINCIPAL
@@ -1018,76 +743,47 @@ $csrfToken = $_SESSION['csrf_token'];
         <header class="topbar">
 
             <div>
-
-                <span class="topbar-label">
-                    GERENCIAMENTO
-                </span>
-
+                <span class="topbar-label">GERENCIAMENTO</span>
                 <h1>Projetos</h1>
-
             </div>
 
             <div class="topbar-user">
 
                 <div class="topbar-avatar">
-
-                    <?= escapar(
-                        strtoupper(substr($nomeUsuario, 0, 1))
-                    ) ?>
-
+                    <?= escapar(strtoupper(substr($nomeUsuario, 0, 1))) ?>
                 </div>
 
                 <div>
-
-                    <strong>
-                        <?= escapar($nomeUsuario) ?>
-                    </strong>
+                    <strong><?= escapar($nomeUsuario) ?></strong>
 
                     <span>
-                        <?= $isAdmin
-                            ? 'Administrador'
-                            : 'Usuário comum' ?>
+                        <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
                     </span>
-
                 </div>
 
             </div>
 
         </header>
 
-
-        <!-- =====================================
-             TÍTULO E BOTÃO
-        ====================================== -->
+        <!-- =================================
+             TÍTULO DA PÁGINA
+        ================================== -->
 
         <section class="projects-toolbar">
 
             <div>
-
                 <h2>Seus projetos</h2>
 
                 <p>
-                    Organize e acompanhe os projetos da sua equipe.
+                    Projetos que você criou, gerencia ou dos quais participa.
                 </p>
-
             </div>
-
-            <a
-                href="projetos.php#formulario"
-                class="btn-add-project"
-                onclick="document.getElementById('nome').focus()"
-            >
-
-                + Novo projeto
-
-            </a>
 
         </section>
 
-
-        <!-- =====================================
+        <!-- =================================
              MENSAGENS
-        ====================================== -->
+        ================================== -->
 
         <?php if ($sucesso): ?>
 
@@ -1097,7 +793,6 @@ $csrfToken = $_SESSION['csrf_token'];
 
         <?php endif; ?>
 
-
         <?php if ($erro): ?>
 
             <div class="alert-error">
@@ -1106,25 +801,17 @@ $csrfToken = $_SESSION['csrf_token'];
 
         <?php endif; ?>
 
-
-        <!-- =====================================
-             FORMULÁRIO DE CADASTRO / EDIÇÃO
-        ====================================== -->
+        <!-- =================================
+             FORMULÁRIO DE PROJETO
+        ================================== -->
 
         <section class="project-form-card" id="formulario">
 
             <h3>
-
-                <?= $projetoEdicao
-                    ? 'Editar projeto'
-                    : 'Cadastrar novo projeto' ?>
-
+                <?= $projetoEdicao ? 'Editar projeto' : 'Cadastrar novo projeto' ?>
             </h3>
 
-            <form
-                method="POST"
-                class="project-form"
-            >
+            <form method="POST" class="project-form">
 
                 <input
                     type="hidden"
@@ -1134,11 +821,7 @@ $csrfToken = $_SESSION['csrf_token'];
 
                 <?php if ($projetoEdicao): ?>
 
-                    <input
-                        type="hidden"
-                        name="acao"
-                        value="editar"
-                    >
+                    <input type="hidden" name="acao" value="editar">
 
                     <input
                         type="hidden"
@@ -1148,20 +831,13 @@ $csrfToken = $_SESSION['csrf_token'];
 
                 <?php else: ?>
 
-                    <input
-                        type="hidden"
-                        name="acao"
-                        value="criar"
-                    >
+                    <input type="hidden" name="acao" value="criar">
 
                 <?php endif; ?>
 
-
                 <div class="form-group">
 
-                    <label for="nome">
-                        Nome do projeto
-                    </label>
+                    <label for="nome">Nome do projeto</label>
 
                     <input
                         type="text"
@@ -1169,35 +845,21 @@ $csrfToken = $_SESSION['csrf_token'];
                         id="nome"
                         maxlength="150"
                         placeholder="Ex.: Desenvolvimento do site"
-                        value="<?= escapar(
-                            $projetoEdicao['nome']
-                            ?? $nomeFormulario
-                        ) ?>"
+                        value="<?= escapar($projetoEdicao['nome'] ?? $nomeFormulario) ?>"
                         required
                     >
 
                 </div>
 
-
                 <div class="form-actions">
 
-                    <button
-                        type="submit"
-                        class="btn-submit"
-                    >
-
-                        <?= $projetoEdicao
-                            ? 'Salvar alterações'
-                            : 'Cadastrar projeto' ?>
-
+                    <button type="submit" class="btn-submit">
+                        <?= $projetoEdicao ? 'Salvar alterações' : 'Cadastrar projeto' ?>
                     </button>
 
                     <?php if ($projetoEdicao): ?>
 
-                        <a
-                            href="projetos.php"
-                            class="btn-cancel"
-                        >
+                        <a href="projetos.php" class="btn-cancel">
                             Cancelar
                         </a>
 
@@ -1209,35 +871,27 @@ $csrfToken = $_SESSION['csrf_token'];
 
         </section>
 
-
-        <!-- =====================================
-             LISTAGEM DOS PROJETOS
-        ====================================== -->
+        <!-- =================================
+             LISTAGEM DE PROJETOS
+        ================================== -->
 
         <section class="content-card">
 
             <div class="card-header">
 
                 <div>
-
                     <h3>Projetos cadastrados</h3>
 
                     <p>
-                        <?= $totalProjetos ?>
-                        projeto(s) encontrado(s).
+                        <?= $totalProjetos ?> projeto(s) encontrado(s).
                     </p>
-
                 </div>
 
             </div>
 
-
             <!-- PESQUISA -->
 
-            <form
-                method="GET"
-                class="search-form"
-            >
+            <form method="GET" class="search-form">
 
                 <input
                     type="search"
@@ -1246,26 +900,19 @@ $csrfToken = $_SESSION['csrf_token'];
                     value="<?= escapar($busca) ?>"
                 >
 
-                <button
-                    type="submit"
-                    class="btn-search"
-                >
+                <button type="submit" class="btn-search">
                     Pesquisar
                 </button>
 
                 <?php if ($busca !== ''): ?>
 
-                    <a
-                        href="projetos.php"
-                        class="btn-cancel"
-                    >
+                    <a href="projetos.php" class="btn-cancel">
                         Limpar
                     </a>
 
                 <?php endif; ?>
 
             </form>
-
 
             <!-- TABELA -->
 
@@ -1274,84 +921,46 @@ $csrfToken = $_SESSION['csrf_token'];
                 <table class="projects-table">
 
                     <thead>
-
                         <tr>
-
                             <th>Projeto</th>
-
                             <th>Tarefas</th>
-
-                            <th>Progresso</th>
-
                             <th>Ações</th>
-
                         </tr>
-
                     </thead>
-
 
                     <tbody>
 
-                        <?php if (empty($projetos)): ?>
+                        <?php if (!$projetos): ?>
 
                             <tr>
-
-                                <td colspan="4">
+                                <td colspan="3">
 
                                     <div class="empty-state">
 
                                         <span>▣</span>
 
-                                        <?php if ($busca !== ''): ?>
-
-                                            <p>
-                                                Nenhum projeto encontrado para essa pesquisa.
-                                            </p>
-
-                                        <?php else: ?>
-
-                                            <p>
-                                                Nenhum projeto cadastrado.
-                                            </p>
-
-                                            <p>
-                                                Cadastre seu primeiro projeto acima.
-                                            </p>
-
-                                        <?php endif; ?>
+                                        <p>
+                                            <?= $busca !== ''
+                                                ? 'Nenhum projeto encontrado para essa pesquisa.'
+                                                : 'Nenhum projeto cadastrado.' ?>
+                                        </p>
 
                                     </div>
 
                                 </td>
-
                             </tr>
 
                         <?php else: ?>
 
-
                             <?php foreach ($projetos as $projeto): ?>
 
                                 <?php
-
-                                    $totalTarefasProjeto = (int)
-                                        $projeto['total_tarefas'];
-
-                                    $tarefasConcluidasProjeto = (int)
-                                        $projeto['tarefas_concluidas'];
-
-                                    $progresso = $totalTarefasProjeto > 0
-                                        ? round(
-                                            ($tarefasConcluidasProjeto /
-                                            $totalTarefasProjeto) * 100
-                                        )
-                                        : 0;
-
+                                $totalTarefasProjeto = (int) $projeto['total_tarefas'];
                                 ?>
-
 
                                 <tr>
 
-                                    <!-- NOME -->
+                                    <!-- NOME DO PROJETO -->
 
                                     <td>
 
@@ -1377,47 +986,11 @@ $csrfToken = $_SESSION['csrf_token'];
 
                                     </td>
 
-
-                                    <!-- TAREFAS -->
-
-                                    <td>
-
-                                        <span class="task-count">
-
-                                            <?= $totalTarefasProjeto ?>
-
-                                            tarefa(s)
-
-                                        </span>
-
-                                    </td>
-
-
-                                    <!-- PROGRESSO -->
+                                    <!-- TOTAL DE TAREFAS -->
 
                                     <td>
-
-                                        <div class="progress-container">
-
-                                            <div class="progress-text">
-
-                                                <?= $progresso ?>%
-
-                                            </div>
-
-                                            <div class="progress-bar">
-
-                                                <div
-                                                    class="progress-fill"
-                                                    style="width: <?= $progresso ?>%"
-                                                ></div>
-
-                                            </div>
-
-                                        </div>
-
+                                        <?= $totalTarefasProjeto ?> tarefa(s)
                                     </td>
-
 
                                     <!-- AÇÕES -->
 
@@ -1426,51 +999,61 @@ $csrfToken = $_SESSION['csrf_token'];
                                         <div class="project-actions">
 
                                             <a
-                                                href="tarefas.php?projeto=<?= (int) $projeto['id'] ?>"
+                                                href="projeto.php?id=<?= (int) $projeto['id'] ?>"
                                                 class="action-link action-access"
                                             >
                                                 Acessar
                                             </a>
 
-                                            <a
-                                                href="projetos.php?editar=<?= (int) $projeto['id'] ?>#formulario"
-                                                class="action-link action-edit"
-                                            >
-                                                Editar
-                                            </a>
+                                            <?php if ((int) $projeto['pode_gerenciar'] === 1): ?>
 
-                                            <form
-                                                method="POST"
-                                                class="delete-form"
-                                                onsubmit="return confirm('Tem certeza de que deseja excluir este projeto? Todas as tarefas e categorias relacionadas também serão excluídas.');"
-                                            >
+                                                <a
+                                                    href="projetos.php?editar=<?= (int) $projeto['id'] ?>#formulario"
+                                                    class="action-link action-edit"
+                                                >
+                                                    Editar
+                                                </a>
 
-                                                <input
-                                                    type="hidden"
-                                                    name="csrf_token"
-                                                    value="<?= escapar($csrfToken) ?>"
+                                                <form
+                                                    method="POST"
+                                                    class="delete-form"
+                                                    onsubmit="return confirm('Tem certeza de que deseja excluir este projeto? Todas as tarefas e categorias relacionadas também serão excluídas.');"
                                                 >
 
-                                                <input
-                                                    type="hidden"
-                                                    name="acao"
-                                                    value="excluir"
-                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="csrf_token"
+                                                        value="<?= escapar($csrfToken) ?>"
+                                                    >
 
-                                                <input
-                                                    type="hidden"
-                                                    name="id_projeto"
-                                                    value="<?= (int) $projeto['id'] ?>"
-                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="acao"
+                                                        value="excluir"
+                                                    >
 
-                                                <button
-                                                    type="submit"
-                                                    class="action-link action-delete"
-                                                >
-                                                    Excluir
-                                                </button>
+                                                    <input
+                                                        type="hidden"
+                                                        name="id_projeto"
+                                                        value="<?= (int) $projeto['id'] ?>"
+                                                    >
 
-                                            </form>
+                                                    <button
+                                                        type="submit"
+                                                        class="action-link action-delete"
+                                                    >
+                                                        Excluir
+                                                    </button>
+
+                                                </form>
+
+                                            <?php else: ?>
+
+                                                <span class="permission-label">
+                                                    Participante
+                                                </span>
+
+                                            <?php endif; ?>
 
                                         </div>
 
@@ -1478,9 +1061,7 @@ $csrfToken = $_SESSION['csrf_token'];
 
                                 </tr>
 
-
                             <?php endforeach; ?>
-
 
                         <?php endif; ?>
 
@@ -1489,7 +1070,6 @@ $csrfToken = $_SESSION['csrf_token'];
                 </table>
 
             </div>
-
 
             <!-- =================================
                  PAGINAÇÃO
@@ -1507,17 +1087,12 @@ $csrfToken = $_SESSION['csrf_token'];
 
                     <?php endif; ?>
 
-
-                    <?php for (
-                        $i = 1;
-                        $i <= $totalPaginas;
-                        $i++
-                    ): ?>
+                    <?php for ($i = 1; $i <= $totalPaginas; $i++): ?>
 
                         <?php if (
-                            $i === 1 ||
-                            $i === $totalPaginas ||
-                            abs($i - $pagina) <= 2
+                            $i === 1
+                            || $i === $totalPaginas
+                            || abs($i - $pagina) <= 2
                         ): ?>
 
                             <?php if ($i === $pagina): ?>
@@ -1534,16 +1109,13 @@ $csrfToken = $_SESSION['csrf_token'];
 
                             <?php endif; ?>
 
-                        <?php elseif (
-                            abs($i - $pagina) === 3
-                        ): ?>
+                        <?php elseif (abs($i - $pagina) === 3): ?>
 
                             <span>...</span>
 
                         <?php endif; ?>
 
                     <?php endfor; ?>
-
 
                     <?php if ($pagina < $totalPaginas): ?>
 
@@ -1557,23 +1129,18 @@ $csrfToken = $_SESSION['csrf_token'];
 
             <?php endif; ?>
 
+            <!-- INFORMAÇÕES DA PAGINAÇÃO -->
 
             <p class="pagination-info">
 
                 <?php if ($totalProjetos > 0): ?>
 
                     Exibindo
-
                     <?= min($offset + 1, $totalProjetos) ?>
-
                     até
-
                     <?= min($offset + $limite, $totalProjetos) ?>
-
                     de
-
                     <?= $totalProjetos ?>
-
                     projeto(s).
 
                 <?php else: ?>
@@ -1584,41 +1151,27 @@ $csrfToken = $_SESSION['csrf_token'];
 
             </p>
 
-
         </section>
 
-
-        <!-- =====================================
+        <!-- =================================
              RODAPÉ
-        ====================================== -->
+        ================================== -->
 
         <footer class="dashboard-footer">
 
             <span>
-
-                © <?= date('Y') ?> TarefAi.
-
-                Gestão de tarefas em equipe.
-
+                © <?= date('Y') ?> TarefAi. Gestão de tarefas em equipe.
             </span>
 
             <span>
-
-                Acesso:
-
-                <?= $isAdmin
-                    ? 'Administrador'
-                    : 'Usuário comum' ?>
-
+                Acesso: <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
             </span>
 
         </footer>
-
 
     </main>
 
 </div>
 
 </body>
-
 </html>

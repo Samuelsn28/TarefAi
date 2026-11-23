@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <main class="auth-container">
 
     <section class="auth-brand">
-        <div class="brand-logo">T</div>
+        <section class="brand-logo">T</section>
 
         <h1>TarefAi</h1>
 
@@ -79,17 +79,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Tudo organizado em um só lugar.
         </p>
 
-        <div class="brand-decoration">
+        <section class="brand-decoration">
             <span>✓</span>
             <span>Organização</span>
             <span>•</span>
             <span>Produtividade</span>
-        </div>
+        </section>
     </section>
 
     <section class="auth-card">
 
-        <div class="auth-heading">
+        <section class="auth-heading">
             <span class="eyebrow">BEM-VINDO DE VOLTA</span>
 
             <h2>Acesse sua conta</h2>
@@ -98,18 +98,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Entre para continuar gerenciando
                 seus projetos.
             </p>
-        </div>
+        </section>
 
         <?php if (isset($_GET['cadastro'])): ?>
-            <div class="alert alert-success">
+            <section class="alert alert-success">
                 Cadastro realizado! Faça login para continuar.
-            </div>
+            </section>
         <?php endif; ?>
 
         <?php if ($erro): ?>
-            <div class="alert alert-error">
+            <section class="alert alert-error">
                 <?= htmlspecialchars($erro) ?>
-            </div>
+            </section>
         <?php endif; ?>
 
         <form method="POST" id="loginForm">
@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
             >
 
-            <div class="form-group">
+            <section class="form-group">
                 <label for="email">E-mail</label>
 
                 <input
@@ -132,12 +132,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     required
                     value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                 >
-            </div>
+            </section>
 
-            <div class="form-group">
+            <section class="form-group">
                 <label for="senha">Senha</label>
 
-                <div class="password-field">
+                <section class="password-field">
                     <input
                         type="password"
                         id="senha"
@@ -146,14 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         autocomplete="current-password"
                         required
                     >
-
-                    <button type="button"
-                            class="toggle-password"
-                            data-target="senha">
-                        Mostrar
-                    </button>
-                </div>
-            </div>
+                </section>
+            </section>
 
             <button type="submit" class="btn-primary">
                 Entrar na plataforma

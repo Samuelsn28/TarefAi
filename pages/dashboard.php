@@ -1,3 +1,4 @@
+
 <?php
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/lib/database/connection.php';
@@ -5,37 +6,53 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/lib/auth.php';
 
 exigirLogin();
 
-// Dados do usuário autenticado.
+// =============================================
+// DADOS DO USUÁRIO
+// =============================================
+
 $usuarioId = (int) $_SESSION['usuario_id'];
-$nomeUsuario = $_SESSION['nome'];
-$role = $_SESSION['role'];
+$nomeUsuario = $_SESSION['nome'] ?? 'Usuário';
+$isAdmin = (($_SESSION['role'] ?? '') === 'admin');
 
-$isAdmin = ($role === 'admin');
+// =============================================
+// FUNÇÕES AUXILIARES
+// =============================================
 
-// Função para proteger a saída de dados HTML.
-function escapar($valor): string {
-    return htmlspecialchars(
-        (string) $valor,
-        ENT_QUOTES,
-        'UTF-8'
-    );
+function escapar($valor): string
+{
+    return htmlspecialchars((string) $valor, ENT_QUOTES, 'UTF-8');
 }
 
-// Todos os usuários, inclusive administradores,
-// visualizam somente os projetos aos quais pertencem.
-$filtroProjetos = "
-    (
-        p.id_usuario_criador = ?
-        OR EXISTS (
-            SELECT 1
-            FROM gestores_projeto gp
-            WHERE gp.id_projeto = p.id
-            AND gp.id_usuario = ?
-        )
-    )
-";
+// =============================================
+// FILTRO DE VISIBILIDADE DOS PROJETOS
+// =============================================
 
-$parametros = [$usuarioId, $usuarioId];
+// Inclui projetos criados, gerenciados ou aceitos como participante.
+$filtroProjetos = "(
+    p.id_usuario_criador = ?
+    OR EXISTS (
+        SELECT 1
+        FROM gestores_projeto gp
+        WHERE gp.id_projeto = p.id
+        AND gp.id_usuario = ?
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM participantes_projeto pp
+        WHERE pp.id_projeto = p.id
+        AND pp.id_usuario = ?
+    )
+)";
+
+$parametros = [
+    $usuarioId,
+    $usuarioId,
+    $usuarioId
+];
+
+// =============================================
+// VARIÁVEIS INICIAIS
+// =============================================
 
 $erro = '';
 
@@ -47,124 +64,122 @@ $tarefasPendentes = 0;
 $projetosRecentes = [];
 $tarefasRecentes = [];
 
+// =============================================
+// CONSULTAS DO DASHBOARD
+// =============================================
+
 try {
 
-    // =====================================
+    // =========================================
     // TOTAL DE PROJETOS
-    // =====================================
+    // =========================================
 
-    $sql = "
-        SELECT COUNT(*)
-        FROM projetos p
-        WHERE $filtroProjetos
-    ";
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM projetos p
+         WHERE $filtroProjetos"
+    );
 
-    $stmt = $pdo->prepare($sql);
     $stmt->execute($parametros);
 
     $totalProjetos = (int) $stmt->fetchColumn();
 
+    // =========================================
+    // ESTATÍSTICAS DAS TAREFAS
+    // =========================================
 
-    // =====================================
-    // ESTATÍSTICAS DE TAREFAS
-    // =====================================
+    $sql = "SELECT
+                COUNT(*) AS total,
 
-    $sql = "
-        SELECT
-            COUNT(*) AS total,
+                SUM(
+                    CASE
+                        WHEN t.completo_em IS NOT NULL THEN 1
+                        ELSE 0
+                    END
+                ) AS concluidas,
 
-            SUM(
-                CASE
-                    WHEN t.completo_em IS NOT NULL THEN 1
-                    ELSE 0
-                END
-            ) AS concluidas,
+                SUM(
+                    CASE
+                        WHEN t.completo_em IS NULL THEN 1
+                        ELSE 0
+                    END
+                ) AS pendentes
 
-            SUM(
-                CASE
-                    WHEN t.completo_em IS NULL THEN 1
-                    ELSE 0
-                END
-            ) AS pendentes
+            FROM tarefas t
 
-        FROM tarefas t
+            INNER JOIN projetos p
+                ON p.id = t.id_projeto
 
-        INNER JOIN projetos p
-            ON p.id = t.id_projeto
-
-        WHERE $filtroProjetos
-    ";
+            WHERE $filtroProjetos";
 
     $stmt = $pdo->prepare($sql);
+
     $stmt->execute($parametros);
 
-    $estatisticas = $stmt->fetch();
+    $estatisticas = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-    $totalTarefas = (int) $estatisticas['total'];
-    $tarefasConcluidas = (int) $estatisticas['concluidas'];
-    $tarefasPendentes = (int) $estatisticas['pendentes'];
+    $totalTarefas = (int) ($estatisticas['total'] ?? 0);
 
+    $tarefasConcluidas = (int) ($estatisticas['concluidas'] ?? 0);
 
-    // =====================================
+    $tarefasPendentes = (int) ($estatisticas['pendentes'] ?? 0);
+
+    // =========================================
     // PROJETOS RECENTES
-    // =====================================
+    // =========================================
 
-    $sql = "
-        SELECT
+    $stmt = $pdo->prepare(
+        "SELECT
             p.id,
             p.nome
 
-        FROM projetos p
+         FROM projetos p
 
-        WHERE $filtroProjetos
+         WHERE $filtroProjetos
 
-        ORDER BY p.id DESC
+         ORDER BY p.id DESC
 
-        LIMIT 5
-    ";
+         LIMIT 5"
+    );
 
-    $stmt = $pdo->prepare($sql);
     $stmt->execute($parametros);
 
-    $projetosRecentes = $stmt->fetchAll();
+    $projetosRecentes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-
-    // =====================================
+    // =========================================
     // TAREFAS RECENTES
-    // =====================================
+    // =========================================
 
-    $sql = "
-        SELECT
-            t.id,
-            t.nome,
-            t.criado_em,
-            t.completo_em,
-            p.nome AS projeto_nome
+    $sql = "SELECT
+                t.id,
+                t.nome,
+                t.criado_em,
+                t.completo_em,
+                p.id AS projeto_id,
+                p.nome AS projeto_nome
 
-        FROM tarefas t
+            FROM tarefas t
 
-        INNER JOIN projetos p
-            ON p.id = t.id_projeto
+            INNER JOIN projetos p
+                ON p.id = t.id_projeto
 
-        WHERE $filtroProjetos
+            WHERE $filtroProjetos
 
-        ORDER BY t.criado_em DESC
+            ORDER BY t.criado_em DESC
 
-        LIMIT 5
-    ";
+            LIMIT 5";
 
     $stmt = $pdo->prepare($sql);
+
     $stmt->execute($parametros);
 
-    $tarefasRecentes = $stmt->fetchAll();
-
+    $tarefasRecentes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
 
     error_log($e->getMessage());
 
-    $erro = 'Não foi possível carregar os dados do dashboard.';
-
+    $erro = 'Não foi possível carregar os dados do dashboard. Confirme se a tabela participantes_projeto existe.';
 }
 
 ?>
@@ -175,576 +190,400 @@ try {
 <head>
 
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Dashboard | TarefAi</title>
 
-    <link rel="stylesheet"
-          href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
 
 </head>
 
 <body>
 
-<div class="dashboard-container">
+    <section class="dashboard-container">
 
-    <!-- =====================================
-         MENU LATERAL
-    ====================================== -->
+        <!-- =====================================
+             MENU LATERAL
+        ====================================== -->
 
-    <aside class="sidebar">
+        <?php
+            require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/components/sidebar.php';
+        ?>
 
-        <div class="sidebar-brand">
+        <!-- =====================================
+             CONTEÚDO PRINCIPAL
+        ====================================== -->
 
-            <div class="brand-logo">T</div>
+        <main class="main-content">
 
-            <span>TarefAi</span>
+            <!-- CABEÇALHO -->
 
-        </div>
+            <header class="topbar">
 
+                <section>
 
-        <nav class="sidebar-nav">
+                    <span class="topbar-label">
+                        PAINEL DE CONTROLE
+                    </span>
 
-            <span class="nav-label">
-                MENU PRINCIPAL
-            </span>
+                    <h1>Dashboard</h1>
 
+                </section>
 
-            <a href="dashboard.php" class="nav-item active">
+                <section class="topbar-user">
 
-                <span class="nav-icon">▦</span>
+                    <section class="topbar-avatar">
+                        <?= escapar(strtoupper(substr($nomeUsuario, 0, 1))) ?>
+                    </section>
 
-                Dashboard
+                    <section>
 
-            </a>
+                        <strong>
+                            <?= escapar($nomeUsuario) ?>
+                        </strong>
 
+                        <span>
+                            <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
+                        </span>
 
-            <a href="projetos.php" class="nav-item">
+                    </section>
 
-                <span class="nav-icon">▣</span>
+                </section>
 
-                Projetos
+            </header>
 
-            </a>
+            <!-- =================================
+                 BOAS-VINDAS
+            ================================== -->
 
+            <section class="welcome-section">
 
-            <a href="tarefas.php" class="nav-item">
+                <section>
 
-                <span class="nav-icon">☑</span>
+                    <h2>
+                        Olá, <?= escapar($nomeUsuario) ?>! 👋
+                    </h2>
 
-                Tarefas
+                    <p>
+                        Acompanhe seus projetos e organize as atividades da sua equipe.
+                    </p>
 
-            </a>
+                </section>
 
+                <section class="welcome-decoration">
+                    <span>✓</span>
+                </section>
 
-            <a href="categorias.php" class="nav-item">
+            </section>
 
-                <span class="nav-icon">◈</span>
+            <!-- =================================
+                 MENSAGENS DE ERRO
+            ================================== -->
 
-                Categorias
+            <?php if ($erro): ?>
 
-            </a>
+                <section class="alert-error">
+                    <?= escapar($erro) ?>
+                </section>
 
+            <?php else: ?>
 
-            <?php if ($isAdmin): ?>
+                <!-- =================================
+                     CARDS DE ESTATÍSTICAS
+                ================================== -->
 
-                <span class="nav-label">
-                    ADMINISTRAÇÃO
-                </span>
+                <section class="stats-grid">
 
+                    <!-- TOTAL DE PROJETOS -->
 
-                <a href="usuarios.php" class="nav-item">
+                    <article class="stat-card">
 
-                    <span class="nav-icon">♙</span>
+                        <section class="stat-icon purple">
+                            ▣
+                        </section>
 
-                    Usuários
+                        <section>
 
-                </a>
+                            <span>Projetos</span>
+
+                            <strong>
+                                <?= $totalProjetos ?>
+                            </strong>
+
+                            <small>
+                                Projetos dos quais você participa
+                            </small>
+
+                        </section>
+
+                    </article>
+
+                    <!-- TOTAL DE TAREFAS -->
+
+                    <article class="stat-card">
+
+                        <section class="stat-icon blue">
+                            ☑
+                        </section>
+
+                        <section>
+
+                            <span>Total de tarefas</span>
+
+                            <strong>
+                                <?= $totalTarefas ?>
+                            </strong>
+
+                            <small>
+                                Tarefas dos seus projetos
+                            </small>
+
+                        </section>
+
+                    </article>
+
+                    <!-- TAREFAS CONCLUÍDAS -->
+
+                    <article class="stat-card">
+
+                        <section class="stat-icon green">
+                            ✓
+                        </section>
+
+                        <section>
+
+                            <span>Concluídas</span>
+
+                            <strong>
+                                <?= $tarefasConcluidas ?>
+                            </strong>
+
+                            <small>
+                                Tarefas finalizadas
+                            </small>
+
+                        </section>
+
+                    </article>
+
+                    <!-- TAREFAS PENDENTES -->
+
+                    <article class="stat-card">
+
+                        <section class="stat-icon orange">
+                            ◷
+                        </section>
+
+                        <section>
+
+                            <span>Pendentes</span>
+
+                            <strong>
+                                <?= $tarefasPendentes ?>
+                            </strong>
+
+                            <small>
+                                Aguardando conclusão
+                            </small>
+
+                        </section>
+
+                    </article>
+
+                </section>
+
+                <!-- =================================
+                     LISTAGENS DO DASHBOARD
+                ================================== -->
+
+                <section class="dashboard-grid">
+
+                    <!-- =================================
+                         PROJETOS RECENTES
+                    ================================== -->
+
+                    <article class="content-card">
+
+                        <section class="card-header">
+
+                            <section>
+
+                                <h3>Projetos recentes</h3>
+
+                                <p>
+                                    Projetos dos quais você participa.
+                                </p>
+
+                            </section>
+
+                            <a href="projetos.php" class="view-all">
+                                Ver todos →
+                            </a>
+
+                        </section>
+
+                        <section class="project-list">
+
+                            <?php if (!$projetosRecentes): ?>
+
+                                <section class="empty-state">
+
+                                    <span>▣</span>
+
+                                    <p>
+                                        Nenhum projeto cadastrado.
+                                    </p>
+
+                                </section>
+
+                            <?php else: ?>
+
+                                <?php foreach ($projetosRecentes as $projeto): ?>
+
+                                    <a
+                                        class="project-item"
+                                        href="projeto.php?id=<?= (int) $projeto['id'] ?>"
+                                        style="text-decoration: none; color: inherit;"
+                                    >
+
+                                        <section class="project-icon">
+                                            ▣
+                                        </section>
+
+                                        <section class="project-info">
+
+                                            <strong>
+                                                <?= escapar($projeto['nome']) ?>
+                                            </strong>
+
+                                            <span>
+                                                Projeto #<?= (int) $projeto['id'] ?>
+                                            </span>
+
+                                        </section>
+
+                                        <span class="project-arrow">
+                                            →
+                                        </span>
+
+                                    </a>
+
+                                <?php endforeach; ?>
+
+                            <?php endif; ?>
+
+                        </section>
+
+                    </article>
+
+                    <!-- =================================
+                         TAREFAS RECENTES
+                    ================================== -->
+
+                    <article class="content-card">
+
+                        <section class="card-header">
+
+                            <section>
+
+                                <h3>Tarefas recentes</h3>
+
+                                <p>
+                                    Confira as últimas atividades.
+                                </p>
+
+                            </section>
+
+                            <a href="tarefas.php" class="view-all">
+                                Ver todas →
+                            </a>
+
+                        </section>
+
+                        <section class="task-list">
+
+                            <?php if (!$tarefasRecentes): ?>
+
+                                <section class="empty-state">
+
+                                    <span>☑</span>
+
+                                    <p>
+                                        Nenhuma tarefa cadastrada.
+                                    </p>
+
+                                </section>
+
+                            <?php else: ?>
+
+                                <?php foreach ($tarefasRecentes as $tarefa): ?>
+
+                                    <section class="task-item">
+
+                                        <!-- STATUS DA TAREFA -->
+
+                                        <section class="task-status <?= $tarefa['completo_em'] ? 'completed' : 'pending' ?>">
+
+                                            <?= $tarefa['completo_em'] ? '✓' : '◷' ?>
+
+                                        </section>
+
+                                        <!-- INFORMAÇÕES DA TAREFA -->
+
+                                        <section class="task-info">
+
+                                            <strong>
+                                                <?= escapar($tarefa['nome']) ?>
+                                            </strong>
+
+                                            <span>
+                                                <?= escapar($tarefa['projeto_nome']) ?>
+                                            </span>
+
+                                        </section>
+
+                                        <!-- SITUAÇÃO -->
+
+                                        <span class="task-badge <?= $tarefa['completo_em'] ? 'badge-completed' : 'badge-pending' ?>">
+
+                                            <?= $tarefa['completo_em'] ? 'Concluída' : 'Pendente' ?>
+
+                                        </span>
+
+                                    </section>
+
+                                <?php endforeach; ?>
+
+                            <?php endif; ?>
+
+                        </section>
+
+                    </article>
+
+                </section>
 
             <?php endif; ?>
 
-        </nav>
+            <!-- =====================================
+                 RODAPÉ
+            ====================================== -->
 
+            <footer class="dashboard-footer">
 
-        <!-- USUÁRIO LOGADO -->
-
-        <div class="sidebar-bottom">
-
-            <div class="sidebar-user">
-
-                <div class="user-avatar">
-
-                    <?= escapar(
-                        strtoupper(substr($nomeUsuario, 0, 1))
-                    ) ?>
-
-                </div>
-
-
-                <div class="user-info">
-
-                    <strong>
-                        <?= escapar($nomeUsuario) ?>
-                    </strong>
-
-                    <span>
-                        <?= $isAdmin
-                            ? 'Administrador'
-                            : 'Usuário' ?>
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <a href="logout.php" class="logout-link">
-
-                <span>↪</span>
-
-                Sair da conta
-
-            </a>
-
-        </div>
-
-    </aside>
-
-
-    <!-- =====================================
-         CONTEÚDO PRINCIPAL
-    ====================================== -->
-
-    <main class="main-content">
-
-
-        <!-- CABEÇALHO -->
-
-        <header class="topbar">
-
-            <div>
-
-                <span class="topbar-label">
-                    PAINEL DE CONTROLE
+                <span>
+                    © <?= date('Y') ?> TarefAi. Gestão de tarefas em equipe.
                 </span>
 
-                <h1>Dashboard</h1>
+                <span>
+                    Acesso: <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
+                </span>
 
-            </div>
+            </footer>
 
+        </main>
 
-            <div class="topbar-user">
-
-                <div class="topbar-avatar">
-
-                    <?= escapar(
-                        strtoupper(substr($nomeUsuario, 0, 1))
-                    ) ?>
-
-                </div>
-
-
-                <div>
-
-                    <strong>
-                        <?= escapar($nomeUsuario) ?>
-                    </strong>
-
-                    <span>
-                        <?= $isAdmin
-                            ? 'Administrador'
-                            : 'Usuário comum' ?>
-                    </span>
-
-                </div>
-
-            </div>
-
-        </header>
-
-
-        <!-- BOAS-VINDAS -->
-
-        <section class="welcome-section">
-
-            <div>
-
-                <h2>
-                    Olá, <?= escapar($nomeUsuario) ?>! 👋
-                </h2>
-
-                <p>
-                    Acompanhe seus projetos e organize
-                    as atividades da sua equipe.
-                </p>
-
-            </div>
-
-
-            <div class="welcome-decoration">
-
-                <span>✓</span>
-
-            </div>
-
-        </section>
-
-
-        <?php if ($erro): ?>
-
-            <div class="alert-error">
-
-                <?= escapar($erro) ?>
-
-            </div>
-
-        <?php else: ?>
-
-
-            <!-- =====================================
-                 INDICADORES
-            ====================================== -->
-
-            <section class="stats-grid">
-
-
-                <!-- PROJETOS -->
-
-                <article class="stat-card">
-
-                    <div class="stat-icon purple">
-                        ▣
-                    </div>
-
-                    <div>
-
-                        <span>Projetos</span>
-
-                        <strong>
-                            <?= $totalProjetos ?>
-                        </strong>
-
-                        <small>
-                            Projetos dos quais você participa
-                        </small>
-
-                    </div>
-
-                </article>
-
-
-                <!-- TOTAL DE TAREFAS -->
-
-                <article class="stat-card">
-
-                    <div class="stat-icon blue">
-                        ☑
-                    </div>
-
-                    <div>
-
-                        <span>Total de tarefas</span>
-
-                        <strong>
-                            <?= $totalTarefas ?>
-                        </strong>
-
-                        <small>
-                            Tarefas dos seus projetos
-                        </small>
-
-                    </div>
-
-                </article>
-
-
-                <!-- CONCLUÍDAS -->
-
-                <article class="stat-card">
-
-                    <div class="stat-icon green">
-                        ✓
-                    </div>
-
-                    <div>
-
-                        <span>Concluídas</span>
-
-                        <strong>
-                            <?= $tarefasConcluidas ?>
-                        </strong>
-
-                        <small>
-                            Tarefas finalizadas
-                        </small>
-
-                    </div>
-
-                </article>
-
-
-                <!-- PENDENTES -->
-
-                <article class="stat-card">
-
-                    <div class="stat-icon orange">
-                        ◷
-                    </div>
-
-                    <div>
-
-                        <span>Pendentes</span>
-
-                        <strong>
-                            <?= $tarefasPendentes ?>
-                        </strong>
-
-                        <small>
-                            Aguardando conclusão
-                        </small>
-
-                    </div>
-
-                </article>
-
-            </section>
-
-
-            <!-- =====================================
-                 PROJETOS E TAREFAS
-            ====================================== -->
-
-            <section class="dashboard-grid">
-
-
-                <!-- PROJETOS RECENTES -->
-
-                <article class="content-card">
-
-
-                    <div class="card-header">
-
-                        <div>
-
-                            <h3>Projetos recentes</h3>
-
-                            <p>
-                                Projetos dos quais você participa.
-                            </p>
-
-                        </div>
-
-
-                        <a href="projetos.php" class="view-all">
-
-                            Ver todos →
-
-                        </a>
-
-                    </div>
-
-
-                    <div class="project-list">
-
-
-                        <?php if (empty($projetosRecentes)): ?>
-
-                            <div class="empty-state">
-
-                                <span>▣</span>
-
-                                <p>
-                                    Nenhum projeto cadastrado.
-                                </p>
-
-                            </div>
-
-
-                        <?php else: ?>
-
-
-                            <?php foreach ($projetosRecentes as $projeto): ?>
-
-
-                                <div class="project-item">
-
-                                    <div class="project-icon">
-                                        ▣
-                                    </div>
-
-
-                                    <div class="project-info">
-
-                                        <strong>
-                                            <?= escapar($projeto['nome']) ?>
-                                        </strong>
-
-                                        <span>
-                                            Projeto #<?= (int) $projeto['id'] ?>
-                                        </span>
-
-                                    </div>
-
-
-                                    <span class="project-arrow">
-                                        →
-                                    </span>
-
-                                </div>
-
-
-                            <?php endforeach; ?>
-
-
-                        <?php endif; ?>
-
-
-                    </div>
-
-                </article>
-
-
-
-                <!-- TAREFAS RECENTES -->
-
-                <article class="content-card">
-
-
-                    <div class="card-header">
-
-                        <div>
-
-                            <h3>Tarefas recentes</h3>
-
-                            <p>
-                                Confira as últimas atividades.
-                            </p>
-
-                        </div>
-
-
-                        <a href="tarefas.php" class="view-all">
-
-                            Ver todas →
-
-                        </a>
-
-                    </div>
-
-
-
-                    <div class="task-list">
-
-
-                        <?php if (empty($tarefasRecentes)): ?>
-
-
-                            <div class="empty-state">
-
-                                <span>☑</span>
-
-                                <p>
-                                    Nenhuma tarefa cadastrada.
-                                </p>
-
-                            </div>
-
-
-                        <?php else: ?>
-
-
-                            <?php foreach ($tarefasRecentes as $tarefa): ?>
-
-
-                                <div class="task-item">
-
-
-                                    <div class="task-status
-                                        <?= $tarefa['completo_em']
-                                            ? 'completed'
-                                            : 'pending' ?>">
-
-                                        <?= $tarefa['completo_em']
-                                            ? '✓'
-                                            : '◷' ?>
-
-                                    </div>
-
-
-                                    <div class="task-info">
-
-                                        <strong>
-                                            <?= escapar($tarefa['nome']) ?>
-                                        </strong>
-
-                                        <span>
-                                            <?= escapar($tarefa['projeto_nome']) ?>
-                                        </span>
-
-                                    </div>
-
-
-                                    <span class="task-badge
-                                        <?= $tarefa['completo_em']
-                                            ? 'badge-completed'
-                                            : 'badge-pending' ?>">
-
-                                        <?= $tarefa['completo_em']
-                                            ? 'Concluída'
-                                            : 'Pendente' ?>
-
-                                    </span>
-
-
-                                </div>
-
-
-                            <?php endforeach; ?>
-
-
-                        <?php endif; ?>
-
-
-                    </div>
-
-                </article>
-
-
-            </section>
-
-
-        <?php endif; ?>
-
-
-        <!-- RODAPÉ -->
-
-        <footer class="dashboard-footer">
-
-            <span>
-
-                © <?= date('Y') ?> TarefAi.
-                Gestão de tarefas em equipe.
-
-            </span>
-
-
-            <span>
-
-                Acesso:
-                <?= $isAdmin
-                    ? 'Administrador'
-                    : 'Usuário comum' ?>
-
-            </span>
-
-        </footer>
-
-
-    </main>
-
-</div>
+    </section>
 
 </body>
+
 </html>

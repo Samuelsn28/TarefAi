@@ -159,7 +159,7 @@ body {
 }
 
 .password-field input {
-    padding-right: 75px;
+    width: 100%;
 }
 
 .toggle-password {
