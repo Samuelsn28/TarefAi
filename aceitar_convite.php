@@ -7,26 +7,39 @@ exigirLogin();
 $usuarioId = (int) $_SESSION['usuario_id'];
 $emailUsuario = mb_strtolower(trim((string) ($_SESSION['email'] ?? '')), 'UTF-8');
 $token = trim($_GET['token'] ?? $_POST['token'] ?? '');
+$idConviteParam = filter_var($_GET['id_convite'] ?? $_POST['id_convite'] ?? null, FILTER_VALIDATE_INT);
+$idConviteParam = ($idConviteParam && $idConviteParam > 0) ? (int) $idConviteParam : null;
 
 function conviteEscapar($valor)
 {
     return htmlspecialchars((string) $valor, ENT_QUOTES, 'UTF-8');
 }
 
-if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
-    http_response_code(400);
-    exit('Link de convite inválido.');
-}
+if ($idConviteParam !== null) {
+    $stmt = $pdo->prepare("
+        SELECT c.id, c.id_projeto, c.email, c.status, c.expira_em, p.nome AS nome_projeto
+        FROM convites_projeto c
+        INNER JOIN projetos p ON p.id = c.id_projeto
+        WHERE c.id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$idConviteParam]);
+} else {
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        http_response_code(400);
+        exit('Link de convite inválido.');
+    }
 
-$tokenHash = hash('sha256', $token);
-$stmt = $pdo->prepare("
-    SELECT c.id, c.id_projeto, c.email, c.status, c.expira_em, p.nome AS nome_projeto
-    FROM convites_projeto c
-    INNER JOIN projetos p ON p.id = c.id_projeto
-    WHERE c.token_hash = ?
-    LIMIT 1
-");
-$stmt->execute([$tokenHash]);
+    $tokenHash = hash('sha256', $token);
+    $stmt = $pdo->prepare("
+        SELECT c.id, c.id_projeto, c.email, c.status, c.expira_em, p.nome AS nome_projeto
+        FROM convites_projeto c
+        INNER JOIN projetos p ON p.id = c.id_projeto
+        WHERE c.token_hash = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$tokenHash]);
+}
 $convite = $stmt->fetch();
 
 if (!$convite) {
@@ -78,6 +91,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->prepare("UPDATE convites_projeto SET status = 'aceito', aceito_em = NOW() WHERE id = ?")->execute([$convite['id']]);
+
+        // Ao aceitar, a notificação correspondente deixa de estar pendente.
+        $pdo->prepare("
+            UPDATE notificacoes
+            SET lida_em = NOW()
+            WHERE id_usuario = ?
+              AND id_convite = ?
+              AND lida_em IS NULL
+        ")->execute([$usuarioId, $convite['id']]);
+
         $pdo->commit();
         $sucesso = true;
     } catch (Throwable $e) {
@@ -119,9 +142,9 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?= conviteEscapar($csrfToken) ?>">
                 <input type="hidden" name="token" value="<?= conviteEscapar($token) ?>">
+                <input type="hidden" name="id_convite" value="<?= (int) ($convite['id'] ?? 0) ?>">
                 <button type="submit" class="btn btn-primary">Aceitar convite</button>
             </form>
         <?php endif; ?>
     </main>
 </body>
-</html>

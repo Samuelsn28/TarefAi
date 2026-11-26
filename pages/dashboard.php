@@ -236,17 +236,19 @@ try {
                         <?= escapar(strtoupper(substr($nomeUsuario, 0, 1))) ?>
                     </section>
 
-                    <section>
+                    <div>
 
                         <strong>
                             <?= escapar($nomeUsuario) ?>
+
                         </strong>
 
                         <span>
                             <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
                         </span>
+                        
 
-                    </section>
+                    </div>
 
                 </section>
 

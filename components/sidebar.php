@@ -2,7 +2,51 @@
 <?php
 
 $sidebarNomeUsuario = $_SESSION['nome'] ?? 'Usuário';
+$sidebarTema = in_array(($_SESSION['tema'] ?? 'claro'), ['claro', 'escuro'], true) ? $_SESSION['tema'] : 'claro';
+$sidebarFotoPerfil = $_SESSION['foto_perfil'] ?? null;
+
+// Atualiza preferências de sessões iniciadas antes da instalação das configurações.
+if (isset($pdo) && $pdo instanceof PDO && (!array_key_exists('tema', $_SESSION) || !array_key_exists('foto_perfil', $_SESSION))) {
+    try {
+        $stmtPreferenciasSidebar = $pdo->prepare('SELECT tema, foto_perfil FROM usuarios WHERE id = ? LIMIT 1');
+        $stmtPreferenciasSidebar->execute([(int) ($_SESSION['usuario_id'] ?? 0)]);
+        $preferenciasSidebar = $stmtPreferenciasSidebar->fetch(PDO::FETCH_ASSOC);
+
+        if ($preferenciasSidebar) {
+            $_SESSION['tema'] = $preferenciasSidebar['tema'] ?: 'claro';
+            $_SESSION['foto_perfil'] = $preferenciasSidebar['foto_perfil'];
+            $sidebarTema = $_SESSION['tema'];
+            $sidebarFotoPerfil = $_SESSION['foto_perfil'];
+        }
+    } catch (Throwable $e) {
+        // Mantém a navegação disponível caso a migração ainda não tenha sido executada.
+    }
+}
+
 $sidebarIsAdmin = (($_SESSION['role'] ?? '') === 'admin');
+
+$sidebarNotificacoesNaoLidas = 0;
+
+if (isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $stmtSidebarNotificacoes = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM notificacoes
+            WHERE id_usuario = ?
+              AND lida_em IS NULL
+        ");
+
+        $stmtSidebarNotificacoes->execute([
+            (int) ($_SESSION['usuario_id'] ?? 0)
+        ]);
+
+        $sidebarNotificacoesNaoLidas = (int) $stmtSidebarNotificacoes->fetchColumn();
+
+    } catch (Throwable $e) {
+        // Mantém o menu funcional caso a tabela ainda não tenha sido criada.
+        $sidebarNotificacoesNaoLidas = 0;
+    }
+}
 
 // =============================================
 // IDENTIFICAÇÃO DA PÁGINA ATUAL
@@ -14,8 +58,10 @@ $sidebarPaginaAtiva = match ($sidebarArquivoAtual) {
     'dashboard.php' => 'dashboard',
     'projetos.php', 'projeto.php' => 'projetos',
     'tarefas.php' => 'tarefas',
+    'notificacoes.php' => 'notificacoes',
     'categorias.php' => 'categorias',
     'usuarios.php' => 'usuarios',
+    'configuracoes.php' => 'configuracoes',
     default => '',
 };
 
@@ -47,16 +93,32 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
     .sidebar {
         width: 250px;
+        min-width: 250px;
+
         height: 100vh;
         max-height: 100vh;
-        overflow: hidden;
+
+        /* Mantém a sidebar visível durante o scroll */
+        position: sticky;
+        top: 0;
+        align-self: flex-start;
+
+        /* Permite rolagem própria se necessário */
+        overflow-x: hidden;
+        overflow-y: auto;
+
         background: #ffffff;
         border-right: 1px solid #eceef4;
+
         padding: 28px 18px;
+
         display: flex;
         flex-direction: column;
+
         flex-shrink: 0;
         box-sizing: border-box;
+
+        z-index: 100;
     }
 
     /* =====================================
@@ -67,11 +129,14 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         display: flex;
         align-items: center;
         gap: 12px;
+
         padding: 0 12px;
         margin-bottom: 48px;
+
         font-size: 23px;
         font-weight: 800;
         color: #20243a;
+
         flex-shrink: 0;
     }
 
@@ -79,11 +144,14 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         width: 39px;
         height: 39px;
         min-width: 39px;
+
         border-radius: 12px;
         background: linear-gradient(135deg, #7669ec, #5148c7);
+
         display: flex;
         justify-content: center;
         align-items: center;
+
         color: #ffffff;
         font-size: 22px;
         font-weight: bold;
@@ -97,9 +165,11 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         display: flex;
         flex-direction: column;
         gap: 8px;
+
         flex: 1;
         min-height: 0;
-        overflow: hidden;
+
+        overflow: visible;
     }
 
     .nav-label {
@@ -107,7 +177,9 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         font-weight: 800;
         color: #a1a4b5;
         letter-spacing: 1.2px;
+
         margin: 22px 12px 8px;
+
         flex-shrink: 0;
     }
 
@@ -115,14 +187,21 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         display: flex;
         align-items: center;
         gap: 13px;
+
         padding: 13px 14px;
+
         border-radius: 9px;
+
         font-size: 14px;
         font-weight: 600;
+
         color: #777b91;
         text-decoration: none;
+
         transition: 0.2s;
+
         flex-shrink: 0;
+        position: relative;
     }
 
     .nav-item:hover {
@@ -133,6 +212,31 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
     .nav-item.active {
         background: #efedff;
         color: #635bdb;
+    }
+
+    /* =====================================
+       CONTADOR DE NOTIFICAÇÕES
+    ===================================== */
+
+    .sidebar-notification-count {
+        margin-left: auto;
+
+        min-width: 19px;
+        height: 19px;
+
+        padding: 0 5px;
+
+        border-radius: 20px;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        background: #e05d65;
+        color: #fff;
+
+        font-size: 10px;
+        font-weight: 800;
     }
 
     .nav-icon {
@@ -149,16 +253,32 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
     .sidebar-bottom {
         margin-top: auto;
         padding-top: 25px;
+
         border-top: 1px solid #eceef4;
+
         flex-shrink: 0;
+    }
+
+    .sidebar-user-link {
+        display: flex;
+        color: inherit;
+        text-decoration: none;
+        border-radius: 10px;
+        transition: background 0.2s;
+    }
+
+    .sidebar-user-link:hover {
+        background: #f3f2ff;
     }
 
     .sidebar-user {
         display: flex;
         align-items: center;
         gap: 11px;
+
         margin-bottom: 20px;
         padding: 0 5px;
+
         min-width: 0;
     }
 
@@ -166,19 +286,26 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         width: 38px;
         height: 38px;
         min-width: 38px;
+
         border-radius: 50%;
+
         background: #eeecff;
         color: #635bdb;
+
         display: flex;
         justify-content: center;
         align-items: center;
+
         font-weight: 800;
+        overflow: hidden;
+        object-fit: cover;
     }
 
     .user-info {
         display: flex;
         flex-direction: column;
         gap: 4px;
+
         min-width: 0;
     }
 
@@ -197,10 +324,14 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         display: flex;
         align-items: center;
         gap: 10px;
+
         padding: 12px;
+
         color: #e05d65;
+
         font-size: 13px;
         font-weight: 600;
+
         border-radius: 8px;
         text-decoration: none;
     }
@@ -218,6 +349,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         .sidebar {
             width: 75px;
             min-width: 75px;
+
             padding: 22px 10px;
         }
 
@@ -243,6 +375,20 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
         .nav-icon {
             font-size: 20px;
+        }
+
+        .sidebar-notification-count {
+            position: absolute;
+
+            top: 5px;
+            right: 5px;
+
+            min-width: 16px;
+            height: 16px;
+
+            padding: 0 3px;
+
+            font-size: 9px;
         }
 
         .sidebar-user {
@@ -303,6 +449,21 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
             Tarefas
         </a>
 
+        <a
+            href="notificacoes.php"
+            class="nav-item <?= $sidebarPaginaAtiva === 'notificacoes' ? 'active' : '' ?>"
+            <?= $sidebarPaginaAtiva === 'notificacoes' ? 'aria-current="page"' : '' ?>
+        >
+            <span class="nav-icon">🔔</span>
+            Notificações
+
+            <?php if ($sidebarNotificacoesNaoLidas > 0): ?>
+                <span class="sidebar-notification-count">
+                    <?= $sidebarNotificacoesNaoLidas > 99 ? '99+' : $sidebarNotificacoesNaoLidas ?>
+                </span>
+            <?php endif; ?>
+        </a>
+
         <?php if ($sidebarIsAdmin): ?>
 
             <span class="nav-label">ADMINISTRAÇÃO</span>
@@ -324,25 +485,23 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
     <section class="sidebar-bottom">
 
-        <section class="sidebar-user">
+        <a href="configuracoes.php" class="sidebar-user-link" aria-label="Abrir configurações da conta">
+            <section class="sidebar-user">
 
-            <section class="user-avatar">
-                <?= sidebarEscapar($sidebarPrimeiraLetra) ?>
+                <?php if ($sidebarFotoPerfil): ?>
+                    <img class="user-avatar" src="../<?= sidebarEscapar($sidebarFotoPerfil) ?>" alt="Foto de perfil">
+                <?php else: ?>
+                    <section class="user-avatar">
+                        <?= sidebarEscapar($sidebarPrimeiraLetra) ?>
+                    </section>
+                <?php endif; ?>
+
+                <section class="user-info">
+                    <strong><?= sidebarEscapar($sidebarNomeUsuario) ?></strong>
+                    <span><?= $sidebarIsAdmin ? 'Administrador' : 'Usuário' ?></span>
+                </section>
             </section>
-
-            <section class="user-info">
-
-                <strong>
-                    <?= sidebarEscapar($sidebarNomeUsuario) ?>
-                </strong>
-
-                <span>
-                    <?= $sidebarIsAdmin ? 'Administrador' : 'Usuário' ?>
-                </span>
-
-            </section>
-
-        </section>
+        </a>
 
         <a href="logout.php" class="logout-link">
             <span>↪</span>
@@ -352,3 +511,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
     </section>
 
 </aside>
+
+<script>
+document.documentElement.dataset.theme = <?= json_encode($sidebarTema, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+</script>

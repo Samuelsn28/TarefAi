@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erro = 'Informe um e-mail e uma senha válidos.';
     } else {
         $stmt = $pdo->prepare(
-            "SELECT id, nome, email, senha, role
+            "SELECT id, nome, email, senha, role, tema, foto_perfil
              FROM usuarios
              WHERE email = ?
              LIMIT 1"
@@ -38,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['nome'] = $usuario['nome'];
             $_SESSION['email'] = $usuario['email'];
             $_SESSION['role'] = $usuario['role'];
+            $_SESSION['tema'] = $usuario['tema'] ?: 'claro';
+            $_SESSION['foto_perfil'] = $usuario['foto_perfil'];
 
             // Atualiza o token após autenticação.
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -103,6 +105,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if (isset($_GET['cadastro'])): ?>
             <section class="alert alert-success">
                 Cadastro realizado! Faça login para continuar.
+            </section>
+        <?php endif; ?>
+
+        <?php if (isset($_GET['conta_excluida'])): ?>
+            <section class="alert alert-success">
+                Sua conta foi excluída com sucesso.
             </section>
         <?php endif; ?>
 

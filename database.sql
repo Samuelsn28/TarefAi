@@ -91,7 +91,7 @@ CREATE TABLE `convites_projeto` (
   KEY `fk_convites_usuario_convidou` (`id_usuario_convidou`),
   CONSTRAINT `fk_convites_projeto` FOREIGN KEY (`id_projeto`) REFERENCES `projetos` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_convites_usuario_convidou` FOREIGN KEY (`id_usuario_convidou`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -100,7 +100,7 @@ CREATE TABLE `convites_projeto` (
 
 LOCK TABLES `convites_projeto` WRITE;
 /*!40000 ALTER TABLE `convites_projeto` DISABLE KEYS */;
-INSERT INTO `convites_projeto` VALUES (1,1,'samuel@gmail.com','2983d1e1140311d49b64581d61a850fe782c1687225b078779a7f0c9d997ab6e',1,'aceito','2026-11-23 16:21:00','2026-11-30 13:21:00','2026-11-23 13:27:56');
+INSERT INTO `convites_projeto` VALUES (1,1,'samuel@gmail.com','2983d1e1140311d49b64581d61a850fe782c1687225b078779a7f0c9d997ab6e',1,'aceito','2026-11-23 16:21:00','2026-11-30 13:21:00','2026-11-23 13:27:56'),(2,4,'angelo@gmail.com','88a569d0ed2a9f8008a6f13d0e5f3f47635e1aa8c09978cd33b209e232701957',2,'aceito','2026-11-26 16:56:54','2026-12-03 13:56:54','2026-11-26 13:57:16');
 /*!40000 ALTER TABLE `convites_projeto` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -131,6 +131,43 @@ LOCK TABLES `gestores_projeto` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `notificacoes`
+--
+
+DROP TABLE IF EXISTS `notificacoes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `notificacoes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id_usuario` int(11) NOT NULL,
+  `tipo` varchar(50) NOT NULL,
+  `titulo` varchar(150) NOT NULL,
+  `mensagem` text NOT NULL,
+  `id_projeto` int(11) DEFAULT NULL,
+  `id_tarefa` int(11) DEFAULT NULL,
+  `id_convite` int(11) DEFAULT NULL,
+  `lida_em` datetime DEFAULT NULL,
+  `criado_em` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_notificacoes_usuario` (`id_usuario`),
+  KEY `idx_notificacoes_usuario_lidas` (`id_usuario`,`lida_em`),
+  KEY `idx_notificacoes_convite` (`id_convite`),
+  KEY `idx_notificacoes_projeto` (`id_projeto`),
+  KEY `idx_notificacoes_tarefa` (`id_tarefa`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `notificacoes`
+--
+
+LOCK TABLES `notificacoes` WRITE;
+/*!40000 ALTER TABLE `notificacoes` DISABLE KEYS */;
+INSERT INTO `notificacoes` VALUES (1,5,'convite_projeto','Convite para um projeto','Você foi convidado para participar do projeto 67.',4,NULL,2,'2026-11-26 13:57:08','2026-11-26 13:56:54'),(2,2,'tarefa_concluida','Tarefa concluída','A tarefa \"Dar o cu\" foi concluída no projeto 67.',4,5,NULL,'2026-11-26 14:00:57','2026-11-26 14:00:24');
+/*!40000 ALTER TABLE `notificacoes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `participantes_projeto`
 --
 
@@ -154,7 +191,7 @@ CREATE TABLE `participantes_projeto` (
 
 LOCK TABLES `participantes_projeto` WRITE;
 /*!40000 ALTER TABLE `participantes_projeto` DISABLE KEYS */;
-INSERT INTO `participantes_projeto` VALUES (2,1,'2026-11-23 16:27:56'),(2,2,'2026-11-23 16:36:56'),(2,4,'2026-11-23 17:23:33'),(3,3,'2026-11-23 16:40:44');
+INSERT INTO `participantes_projeto` VALUES (2,1,'2026-11-23 16:27:56'),(2,2,'2026-11-23 16:36:56'),(2,4,'2026-11-23 17:23:33'),(3,3,'2026-11-23 16:40:44'),(5,4,'2026-11-26 16:57:16');
 /*!40000 ALTER TABLE `participantes_projeto` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -172,7 +209,7 @@ CREATE TABLE `projetos` (
   PRIMARY KEY (`id`),
   KEY `id_usuario_criador` (`id_usuario_criador`),
   CONSTRAINT `projetos_ibfk_1` FOREIGN KEY (`id_usuario_criador`) REFERENCES `usuarios` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -208,7 +245,7 @@ CREATE TABLE `responsaveis` (
 
 LOCK TABLES `responsaveis` WRITE;
 /*!40000 ALTER TABLE `responsaveis` DISABLE KEYS */;
-INSERT INTO `responsaveis` VALUES (1,4),(2,2),(2,3),(3,1);
+INSERT INTO `responsaveis` VALUES (1,4),(2,2),(2,3),(3,1),(5,5);
 /*!40000 ALTER TABLE `responsaveis` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -229,7 +266,7 @@ CREATE TABLE `tarefas` (
   PRIMARY KEY (`id`),
   KEY `id_projeto` (`id_projeto`),
   CONSTRAINT `tarefas_ibfk_1` FOREIGN KEY (`id_projeto`) REFERENCES `projetos` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -238,7 +275,7 @@ CREATE TABLE `tarefas` (
 
 LOCK TABLES `tarefas` WRITE;
 /*!40000 ALTER TABLE `tarefas` DISABLE KEYS */;
-INSERT INTO `tarefas` VALUES (1,3,'Desenvolver humanos 1','2026-11-23 13:43:15','2026-11-23 13:43:48',NULL),(2,1,'Toma no cu','2026-11-23 14:11:35','2026-11-23 14:21:41',NULL),(3,4,'67','2026-11-23 14:23:46',NULL,NULL),(4,1,'104','2026-11-23 14:42:16','2026-11-23 14:42:19',NULL);
+INSERT INTO `tarefas` VALUES (1,3,'Desenvolver humanos 1','2026-11-23 13:43:15','2026-11-23 13:43:48',NULL),(2,1,'Toma no cu','2026-11-23 14:11:35','2026-11-23 14:21:41',NULL),(3,4,'67','2026-11-23 14:23:46',NULL,NULL),(4,1,'104','2026-11-23 14:42:16','2026-11-23 14:42:19',NULL),(5,4,'Dar o cu 21','2026-11-26 14:00:10','2026-11-26 14:00:24',NULL);
 /*!40000 ALTER TABLE `tarefas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -255,9 +292,11 @@ CREATE TABLE `usuarios` (
   `email` varchar(150) NOT NULL,
   `senha` varchar(255) NOT NULL,
   `role` enum('admin','default') NOT NULL DEFAULT 'default',
+  `tema` enum('claro','escuro') NOT NULL DEFAULT 'claro',
+  `foto_perfil` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -266,7 +305,7 @@ CREATE TABLE `usuarios` (
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'Yasmim','yasmim@gmail.com','$2y$10$zT5gQN5b.6XjBc7dcmKZ9.biEOLYj6UZK0uJJsDVc1SREfwnAZUNO','admin'),(2,'Samuel','samuel@gmail.com','$2y$10$bV5e2ODHz7GlHuv005wqX.SuorcehNmhHvCXngXO2ayu17UnRLeyy','default'),(3,'PedrinMatador','pedrinomatador@gmail.com','$2y$10$.wKW0NrawMYu3kmWhPvPeuo7cH4xV.4AdqqzGBjSkItnyj9Sh6GcW','default'),(4,'aiai','ai@gmail.com','$2y$10$yFzJhJWowHFNh1Kuo1qLkuemcCZYIE.Qokdi9.fm3uWRal2ggxYf6','default');
+INSERT INTO `usuarios` VALUES (1,'Yasmim','yasmim@gmail.com','$2y$10$zT5gQN5b.6XjBc7dcmKZ9.biEOLYj6UZK0uJJsDVc1SREfwnAZUNO','admin','claro',NULL),(2,'Samuel','samuel@gmail.com','$2y$10$bV5e2ODHz7GlHuv005wqX.SuorcehNmhHvCXngXO2ayu17UnRLeyy','default','escuro',NULL),(3,'PedrinMatador','pedrinomatador@gmail.com','$2y$10$.wKW0NrawMYu3kmWhPvPeuo7cH4xV.4AdqqzGBjSkItnyj9Sh6GcW','default','claro',NULL),(4,'aiai','ai@gmail.com','$2y$10$yFzJhJWowHFNh1Kuo1qLkuemcCZYIE.Qokdi9.fm3uWRal2ggxYf6','default','claro',NULL),(5,'Angelo','angelo@gmail.com','$2y$10$A3fPMqsv/ToT5B34jJY7keTvuEnl1Oz8SdayZgCY6/0cUTf6mrpM6','default','claro',NULL);
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -279,4 +318,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-23 14:57:09
+-- Dump completed on 2026-11-26 14:39:18

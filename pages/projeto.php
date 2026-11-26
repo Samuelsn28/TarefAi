@@ -1,6 +1,7 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/lib/database/connection.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/lib/auth.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/lib/notificacoes.php';
 
 exigirLogin();
 
@@ -267,6 +268,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tokenHash,
                 $usuarioId
             ]);
+
+            $idConviteCriado = (int) $pdo->lastInsertId();
+
+            // A notificação interna só pode ser enviada se o e-mail já
+            // pertencer a uma conta cadastrada no TarefAi.
+            $stmtUsuarioConvidado = $pdo->prepare("
+                SELECT id
+                FROM usuarios
+                WHERE LOWER(email) = LOWER(?)
+                LIMIT 1
+            ");
+            $stmtUsuarioConvidado->execute([$emailConvite]);
+            $idUsuarioConvidado = (int) $stmtUsuarioConvidado->fetchColumn();
+
+            if ($idUsuarioConvidado > 0) {
+                criarNotificacao(
+                    $pdo,
+                    $idUsuarioConvidado,
+                    'convite_projeto',
+                    'Convite para um projeto',
+                    'Você foi convidado para participar do projeto ' . $projeto['nome'] . '.',
+                    $idProjeto,
+                    null,
+                    $idConviteCriado
+                );
+            }
 
             $hostAtual = $_SERVER['HTTP_HOST'] ?? '';
 
@@ -556,6 +583,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Tarefa inválida.');
             }
 
+            // Recupera o estado anterior para notificar somente quando
+            // a tarefa passa de pendente para concluída.
+            $stmtEstadoTarefa = $pdo->prepare("
+                SELECT nome, completo_em
+                FROM tarefas
+                WHERE id = ?
+                  AND id_projeto = ?
+                LIMIT 1
+            ");
+            $stmtEstadoTarefa->execute([$idTarefa, $idProjeto]);
+            $estadoAnterior = $stmtEstadoTarefa->fetch(PDO::FETCH_ASSOC);
+
             $stmt = $pdo->prepare("
                 UPDATE tarefas t
                 SET t.completo_em = CASE
@@ -572,6 +611,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   )
             ");
             $stmt->execute([$idTarefa, $idProjeto, $usuarioId]);
+
+            if ($stmt->rowCount() > 0 && $estadoAnterior && $estadoAnterior['completo_em'] === null) {
+                // O criador e todos os gestores recebem a notificação.
+                // UNION evita notificações duplicadas caso alguém apareça
+                // em mais de um dos vínculos de gerenciamento.
+                $stmtGestoresNotificacao = $pdo->prepare("
+                    SELECT id_usuario_criador AS id_usuario
+                    FROM projetos
+                    WHERE id = ?
+
+                    UNION
+
+                    SELECT id_usuario
+                    FROM gestores_projeto
+                    WHERE id_projeto = ?
+                ");
+                $stmtGestoresNotificacao->execute([$idProjeto, $idProjeto]);
+
+                foreach ($stmtGestoresNotificacao->fetchAll(PDO::FETCH_COLUMN) as $idGestorNotificacao) {
+                    criarNotificacao(
+                        $pdo,
+                        (int) $idGestorNotificacao,
+                        'tarefa_concluida',
+                        'Tarefa concluída',
+                        'A tarefa "' . $estadoAnterior['nome'] . '" foi concluída no projeto ' . $projeto['nome'] . '.',
+                        $idProjeto,
+                        $idTarefa,
+                        null
+                    );
+                }
+            }
 
             if ($stmt->rowCount() === 0) {
                 $stmtVerificar = $pdo->prepare("
