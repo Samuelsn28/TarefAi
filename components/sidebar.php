@@ -24,6 +24,43 @@ if (isset($pdo) && $pdo instanceof PDO && (!array_key_exists('tema', $_SESSION) 
 }
 
 $sidebarIsAdmin = (($_SESSION['role'] ?? '') === 'admin');
+$sidebarTotalProjetosGerenciados = 0;
+$sidebarNomePlataforma = 'TarefAí';
+
+if (isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $stmtSidebarGestao = $pdo->prepare("
+            SELECT COUNT(DISTINCT p.id)
+            FROM projetos p
+            WHERE p.id_usuario_criador = ?
+               OR EXISTS (
+                    SELECT 1 FROM gestores_projeto gp
+                    WHERE gp.id_projeto = p.id AND gp.id_usuario = ?
+               )
+        ");
+        $stmtSidebarGestao->execute([
+            (int) ($_SESSION['usuario_id'] ?? 0),
+            (int) ($_SESSION['usuario_id'] ?? 0)
+        ]);
+        $sidebarTotalProjetosGerenciados = (int) $stmtSidebarGestao->fetchColumn();
+
+        $stmtSidebarNome = $pdo->prepare("
+            SELECT valor FROM configuracoes_plataforma
+            WHERE chave = 'nome_plataforma' LIMIT 1
+        ");
+        $stmtSidebarNome->execute();
+        $nomePlataformaBanco = $stmtSidebarNome->fetchColumn();
+        if ($nomePlataformaBanco !== false && trim((string) $nomePlataformaBanco) !== '') {
+            $sidebarNomePlataforma = (string) $nomePlataformaBanco;
+        }
+    } catch (Throwable $e) {
+        // A sidebar permanece disponível se a migração administrativa estiver pendente.
+    }
+}
+
+$sidebarRotuloPapel = $sidebarIsAdmin
+    ? 'Administrador da plataforma'
+    : ($sidebarTotalProjetosGerenciados > 0 ? 'Gestor de projetos' : 'Membro de projetos');
 
 $sidebarNotificacoesNaoLidas = 0;
 
@@ -61,6 +98,11 @@ $sidebarPaginaAtiva = match ($sidebarArquivoAtual) {
     'notificacoes.php' => 'notificacoes',
     'categorias.php' => 'categorias',
     'usuarios.php' => 'usuarios',
+    'admin.php' => 'admin',
+    'admin_projetos.php' => 'admin_projetos',
+    'admin_relatorios.php' => 'admin_relatorios',
+    'admin_atividades.php' => 'admin_atividades',
+    'admin_configuracoes.php' => 'admin_configuracoes',
     'configuracoes.php' => 'configuracoes',
     default => '',
 };
@@ -413,7 +455,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
         <section class="brand-logo">T</section>
 
-        <span>TarefAí</span>
+        <span><?= sidebarEscapar($sidebarNomePlataforma) ?></span>
 
     </section>
 
@@ -468,12 +510,57 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
             <span class="nav-label">ADMINISTRAÇÃO</span>
 
             <a
+                href="admin.php"
+                class="nav-item <?= $sidebarPaginaAtiva === 'admin' ? 'active' : '' ?>"
+                <?= $sidebarPaginaAtiva === 'admin' ? 'aria-current="page"' : '' ?>
+            >
+                <span class="nav-icon">▦</span>
+                Visão geral
+            </a>
+
+            <a
                 href="usuarios.php"
                 class="nav-item <?= $sidebarPaginaAtiva === 'usuarios' ? 'active' : '' ?>"
                 <?= $sidebarPaginaAtiva === 'usuarios' ? 'aria-current="page"' : '' ?>
             >
                 <span class="nav-icon">♙</span>
                 Usuários
+            </a>
+
+            <a
+                href="admin_projetos.php"
+                class="nav-item <?= $sidebarPaginaAtiva === 'admin_projetos' ? 'active' : '' ?>"
+                <?= $sidebarPaginaAtiva === 'admin_projetos' ? 'aria-current="page"' : '' ?>
+            >
+                <span class="nav-icon">▣</span>
+                Projetos
+            </a>
+
+            <a
+                href="admin_relatorios.php"
+                class="nav-item <?= $sidebarPaginaAtiva === 'admin_relatorios' ? 'active' : '' ?>"
+                <?= $sidebarPaginaAtiva === 'admin_relatorios' ? 'aria-current="page"' : '' ?>
+            >
+                <span class="nav-icon">▥</span>
+                Relatórios
+            </a>
+
+            <a
+                href="admin_atividades.php"
+                class="nav-item <?= $sidebarPaginaAtiva === 'admin_atividades' ? 'active' : '' ?>"
+                <?= $sidebarPaginaAtiva === 'admin_atividades' ? 'aria-current="page"' : '' ?>
+            >
+                <span class="nav-icon">◷</span>
+                Histórico
+            </a>
+
+            <a
+                href="admin_configuracoes.php"
+                class="nav-item <?= $sidebarPaginaAtiva === 'admin_configuracoes' ? 'active' : '' ?>"
+                <?= $sidebarPaginaAtiva === 'admin_configuracoes' ? 'aria-current="page"' : '' ?>
+            >
+                <span class="nav-icon">⚙</span>
+                Plataforma
             </a>
 
         <?php endif; ?>
@@ -497,7 +584,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
                 <section class="user-info">
                     <strong><?= sidebarEscapar($sidebarNomeUsuario) ?></strong>
-                    <span><?= $sidebarIsAdmin ? 'Administrador' : 'Usuário' ?></span>
+                    <span><?= sidebarEscapar($sidebarRotuloPapel) ?></span>
                 </section>
             </section>
         </a>

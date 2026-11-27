@@ -1020,3 +1020,18 @@ html[data-theme="escuro"] .user-avatar {
         padding: 16px;
     }
 }
+
+
+/* Identificação da permissão do usuário em cada projeto */
+.project-role-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-top: 6px;
+    padding: 4px 7px;
+    border-radius: 20px;
+    background: var(--surface-primary);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 800;
+}

@@ -85,6 +85,14 @@ $stmtEhGestor = $pdo->prepare("
 $stmtEhGestor->execute([$idProjeto, $usuarioId]);
 $ehGestor = (bool) $stmtEhGestor->fetchColumn();
 
+$stmtGestoresProjeto = $pdo->prepare("
+    SELECT id_usuario
+    FROM gestores_projeto
+    WHERE id_projeto = ?
+");
+$stmtGestoresProjeto->execute([$idProjeto]);
+$gestoresProjetoIds = array_map('intval', $stmtGestoresProjeto->fetchAll(PDO::FETCH_COLUMN));
+
 /*
  * Somente o criador e os gestores podem criar, editar e excluir tarefas,
  * além de convidar novos participantes.
@@ -179,11 +187,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
      * Bloqueio no servidor: participantes não podem executar ações
      * de criação, edição ou exclusão, mesmo enviando POST manualmente.
      */
-    $acoesDeGerenciamento = ['criar', 'editar', 'excluir', 'convidar_participante'];
+    $acoesDeGerenciamento = ['criar', 'editar', 'excluir', 'convidar_participante', 'alterar_gestor'];
 
     if (in_array($acao, $acoesDeGerenciamento, true) && !$podeGerenciarTarefas) {
         http_response_code(403);
         exit('Somente o criador ou um gestor pode realizar esta ação.');
+    }
+
+    // Somente o criador do projeto pode promover ou remover outros gestores.
+    if ($acao === 'alterar_gestor' && !$ehCriador) {
+        http_response_code(403);
+        exit('Somente o criador do projeto pode alterar a equipe de gestão.');
     }
 
     try {
@@ -193,7 +207,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         |--------------------------------------------------------------------------
         */
 
-        if ($acao === 'convidar_participante') {
+        if ($acao === 'alterar_gestor') {
+            $idMembro = filter_var($_POST['id_membro'] ?? null, FILTER_VALIDATE_INT);
+            $operacaoGestor = (string) ($_POST['operacao_gestor'] ?? '');
+
+            if (!$idMembro || $idMembro <= 0 || $idMembro === (int) $projeto['id_usuario_criador']) {
+                throw new Exception('Selecione um participante válido.');
+            }
+
+            if (!in_array($operacaoGestor, ['promover', 'remover'], true)) {
+                throw new Exception('Operação de gestão inválida.');
+            }
+
+            $stmtMembro = $pdo->prepare("
+                SELECT u.id, u.nome, u.status
+                FROM usuarios u
+                WHERE u.id = ?
+                  AND (
+                      EXISTS (
+                          SELECT 1 FROM participantes_projeto pp
+                          WHERE pp.id_usuario = u.id AND pp.id_projeto = ?
+                      )
+                      OR EXISTS (
+                          SELECT 1 FROM gestores_projeto gp
+                          WHERE gp.id_usuario = u.id AND gp.id_projeto = ?
+                      )
+                  )
+                LIMIT 1
+            ");
+            $stmtMembro->execute([$idMembro, $idProjeto, $idProjeto]);
+            $membroGestao = $stmtMembro->fetch(PDO::FETCH_ASSOC);
+
+            if (!$membroGestao) {
+                throw new Exception('Somente membros atuais do projeto podem receber ou perder a função de gestor.');
+            }
+
+            if ($operacaoGestor === 'promover') {
+                if ($membroGestao['status'] !== 'ativo') {
+                    throw new Exception('Não é possível promover uma conta bloqueada a gestora.');
+                }
+
+                $stmtPromover = $pdo->prepare("
+                    INSERT IGNORE INTO gestores_projeto (id_usuario, id_projeto)
+                    VALUES (?, ?)
+                ");
+                $stmtPromover->execute([$idMembro, $idProjeto]);
+
+                if ($stmtPromover->rowCount() > 0) {
+                    criarNotificacao(
+                        $pdo,
+                        (int) $idMembro,
+                        'promovido_gestor',
+                        'Você agora é gestor de um projeto',
+                        'Você recebeu permissões de gestão no projeto ' . $projeto['nome'] . '.',
+                        $idProjeto
+                    );
+                }
+
+                tarefasRedirecionar($idProjeto, 'Permissão de gestor concedida a ' . $membroGestao['nome'] . '.');
+            }
+
+            $stmtRemoverGestor = $pdo->prepare("
+                DELETE FROM gestores_projeto
+                WHERE id_usuario = ?
+                  AND id_projeto = ?
+            ");
+            $stmtRemoverGestor->execute([$idMembro, $idProjeto]);
+
+            if ($stmtRemoverGestor->rowCount() > 0) {
+                criarNotificacao(
+                    $pdo,
+                    (int) $idMembro,
+                    'removido_gestor',
+                    'Permissão de gestor removida',
+                    'Sua permissão de gestão foi removida do projeto ' . $projeto['nome'] . '.',
+                    $idProjeto
+                );
+            }
+
+            tarefasRedirecionar($idProjeto, 'Permissão de gestor removida de ' . $membroGestao['nome'] . '.');
+
+        } elseif ($acao === 'convidar_participante') {
             $emailConvite = trim((string) ($_POST['email_participante'] ?? ''));
             $emailConvite = function_exists('mb_strtolower')
                 ? mb_strtolower($emailConvite, 'UTF-8')
@@ -1454,6 +1548,50 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
                             <span class="team-member"><?= tarefasEscapar($membro['nome']) ?> · <?= tarefasEscapar($membro['email']) ?></span>
                         <?php endforeach; ?>
                     </section>
+                </section>
+            <?php endif; ?>
+
+            <?php if ($ehCriador): ?>
+                <section class="invite-card">
+                    <section class="card-heading">
+                        <h2>Gestores do projeto</h2>
+                    </section>
+                    <p>Gestores podem criar, editar e excluir tarefas e convidar participantes. Somente você, como criador, pode conceder ou remover essa permissão. Isso não altera o papel de administrador da plataforma.</p>
+
+                    <?php
+                    $membrosParaGestao = array_values(array_filter(
+                        $equipe,
+                        static fn(array $membro): bool => (int) $membro['id'] !== (int) $projeto['id_usuario_criador']
+                    ));
+                    ?>
+
+                    <?php if (empty($membrosParaGestao)): ?>
+                        <p>Adicione participantes ao projeto para poder promovê-los a gestores.</p>
+                    <?php else: ?>
+                        <section class="team-list">
+                            <?php foreach ($membrosParaGestao as $membroGestor): ?>
+                                <?php $membroJaGestor = in_array((int) $membroGestor['id'], $gestoresProjetoIds, true); ?>
+                                <section class="team-member" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                                    <span>
+                                        <?= tarefasEscapar($membroGestor['nome']) ?>
+                                        · <?= tarefasEscapar($membroGestor['email']) ?>
+                                        <strong style="margin-left:6px;color:var(--primary)">
+                                            <?= $membroJaGestor ? 'Gestor' : 'Participante' ?>
+                                        </strong>
+                                    </span>
+                                    <form method="POST" action="projeto.php?id=<?= (int) $idProjeto ?>" onsubmit="return confirm('<?= $membroJaGestor ? 'Remover' : 'Conceder' ?> a permissão de gestor para este usuário?');">
+                                        <input type="hidden" name="csrf_token" value="<?= tarefasEscapar($csrfToken) ?>">
+                                        <input type="hidden" name="acao" value="alterar_gestor">
+                                        <input type="hidden" name="id_membro" value="<?= (int) $membroGestor['id'] ?>">
+                                        <input type="hidden" name="operacao_gestor" value="<?= $membroJaGestor ? 'remover' : 'promover' ?>">
+                                        <button type="submit" class="btn <?= $membroJaGestor ? 'btn-secondary' : 'btn-primary' ?>">
+                                            <?= $membroJaGestor ? 'Remover gestor' : 'Promover a gestor' ?>
+                                        </button>
+                                    </form>
+                                </section>
+                            <?php endforeach; ?>
+                        </section>
+                    <?php endif; ?>
                 </section>
             <?php endif; ?>
 

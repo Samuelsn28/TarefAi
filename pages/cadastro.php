@@ -8,9 +8,27 @@ if (!empty($_SESSION['usuario_id'])) {
 }
 
 $erro = '';
+$cadastrosAbertos = true;
+
+try {
+    $stmtCadastroConfig = $pdo->prepare(
+        "SELECT valor FROM configuracoes_plataforma WHERE chave = 'cadastros_abertos' LIMIT 1"
+    );
+    $stmtCadastroConfig->execute();
+    $valorCadastroConfig = $stmtCadastroConfig->fetchColumn();
+    if ($valorCadastroConfig !== false) {
+        $cadastrosAbertos = ((string) $valorCadastroConfig === '1');
+    }
+} catch (Throwable $e) {
+    // Antes da migração administrativa, o comportamento permanece aberto.
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificarCSRF();
+
+    if (!$cadastrosAbertos) {
+        $erro = 'Os cadastros estão temporariamente fechados.';
+    } else {
 
     $nome = trim($_POST['nome'] ?? '');
     $email = strtolower(trim($_POST['email'] ?? ''));
@@ -99,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
         }
     }
+    }
 }
 ?>
 
@@ -151,12 +170,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </p>
         </section>
 
+        <?php if (!$cadastrosAbertos): ?>
+            <section class="alert alert-error">
+                Os cadastros estão temporariamente fechados pela administração.
+            </section>
+        <?php endif; ?>
+
         <?php if ($erro): ?>
             <section class="alert alert-error">
                 <?= htmlspecialchars($erro) ?>
             </section>
         <?php endif; ?>
 
+        <?php if ($cadastrosAbertos): ?>
         <form method="POST" id="cadastroForm">
 
             <input
@@ -234,6 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </button>
 
         </form>
+        <?php endif; ?>
 
         <p class="auth-footer">
             Já possui uma conta?

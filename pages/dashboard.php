@@ -555,7 +555,7 @@ try {
                 </span>
 
                 <span>
-                    Acesso: <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
+                    Acesso: <?= $isAdmin ? 'Administrador da plataforma' : 'Usuário comum' ?>
                 </span>
 
             </footer>

@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 // Verifica se o usuário pode gerenciar o projeto.
                 $stmt = $pdo->prepare(
-                    "SELECT p.id
+                    "SELECT p.id, p.id_usuario_criador
                      FROM projetos p
                      WHERE p.id = ?
                        AND $filtroGerenciamento
@@ -200,10 +200,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     )
                 );
 
-                if (!$stmt->fetchColumn()) {
+                $projetoPermissao = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$projetoPermissao) {
                     $erro = 'Somente o criador ou um gestor pode '
                         . ($acao === 'editar' ? 'editar' : 'excluir')
                         . ' este projeto.';
+
+                } elseif (
+                    $acao === 'excluir'
+                    && (int) $projetoPermissao['id_usuario_criador'] !== $usuarioId
+                ) {
+                    $erro = 'Somente o criador do projeto pode excluí-lo.';
 
                 // =================================
                 // EDITAR PROJETO
@@ -241,6 +249,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // =================================
 
                 } else {
+                    $stmtNotificacoes = $pdo->prepare("
+                        DELETE FROM notificacoes
+                        WHERE id_projeto = ?
+                           OR id_tarefa IN (SELECT id FROM tarefas WHERE id_projeto = ?)
+                           OR id_convite IN (SELECT id FROM convites_projeto WHERE id_projeto = ?)
+                    ");
+                    $stmtNotificacoes->execute([$idProjeto, $idProjeto, $idProjeto]);
+
                     $stmt = $pdo->prepare(
                         'DELETE FROM projetos
                          WHERE id = ?'
@@ -966,6 +982,16 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
                                                     Projeto #<?= (int) $projeto['id'] ?>
                                                 </small>
 
+                                                <span class="project-role-badge">
+                                                    <?php if ((int) $projeto['id_usuario_criador'] === $usuarioId): ?>
+                                                        Criador
+                                                    <?php elseif ((int) $projeto['pode_gerenciar'] === 1): ?>
+                                                        Gestor
+                                                    <?php else: ?>
+                                                        Participante
+                                                    <?php endif; ?>
+                                                </span>
+
                                             </div>
 
                                         </div>
@@ -1000,6 +1026,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
                                                     Editar
                                                 </a>
 
+                                                <?php if ((int) $projeto['id_usuario_criador'] === $usuarioId): ?>
                                                 <form
                                                     method="POST"
                                                     class="delete-form"
@@ -1032,6 +1059,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
                                                     </button>
 
                                                 </form>
+                                                <?php endif; ?>
 
                                             <?php else: ?>
 
@@ -1150,7 +1178,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             </span>
 
             <span>
-                Acesso: <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
+                Acesso: <?= $isAdmin ? 'Administrador da plataforma' : 'Usuário comum' ?>
             </span>
 
         </footer>

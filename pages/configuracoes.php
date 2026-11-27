@@ -170,9 +170,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Digite EXCLUIR para confirmar a exclusão da conta.');
             }
 
-            $fotoParaExcluir = $usuario['foto_perfil'];
-
             $pdo->beginTransaction();
+
+            if ($usuario['role'] === 'admin') {
+                $stmtAdminsAtivos = $pdo->query("
+                    SELECT id
+                    FROM usuarios
+                    WHERE role = 'admin' AND status = 'ativo'
+                    FOR UPDATE
+                ");
+
+                if (count($stmtAdminsAtivos->fetchAll(PDO::FETCH_COLUMN)) <= 1) {
+                    throw new RuntimeException(
+                        'Você é o último administrador ativo. Promova outro usuário a administrador antes de excluir sua conta.'
+                    );
+                }
+            }
+
+            $fotoParaExcluir = $usuario['foto_perfil'];
 
             // Bloqueia a conta durante o procedimento de exclusão.
             $stmt = $pdo->prepare('SELECT id FROM usuarios WHERE id = ? FOR UPDATE');
@@ -189,11 +204,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $projetoId = (int) $projetoId;
 
                 $stmtGestor = $pdo->prepare(
-                    'SELECT id_usuario
-                     FROM gestores_projeto
-                     WHERE id_projeto = ?
-                       AND id_usuario <> ?
-                     ORDER BY id_usuario ASC
+                    'SELECT gp.id_usuario
+                     FROM gestores_projeto gp
+                     INNER JOIN usuarios u ON u.id = gp.id_usuario
+                     WHERE gp.id_projeto = ?
+                       AND gp.id_usuario <> ?
+                       AND u.status = \'ativo\'
+                     ORDER BY gp.id_usuario ASC
                      LIMIT 1'
                 );
                 $stmtGestor->execute([$projetoId, $usuarioId]);

@@ -3,6 +3,7 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/lib/database/connection.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/TarefAi/lib/auth.php';
 
 if (!empty($_SESSION['usuario_id'])) {
+    exigirLogin();
     header('Location: dashboard.php');
     exit;
 }
@@ -19,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erro = 'Informe um e-mail e uma senha válidos.';
     } else {
         $stmt = $pdo->prepare(
-            "SELECT id, nome, email, senha, role, tema, foto_perfil
+            "SELECT id, nome, email, senha, role, tema, foto_perfil, status
              FROM usuarios
              WHERE email = ?
              LIMIT 1"
@@ -32,7 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $usuario &&
             password_verify($senha, $usuario['senha'])
         ) {
-            session_regenerate_id(true);
+            if ($usuario['status'] !== 'ativo') {
+                $erro = 'Esta conta está bloqueada. Entre em contato com um administrador.';
+            } else {
+                $pdo->prepare('UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = ?')
+                    ->execute([(int) $usuario['id']]);
+
+                session_regenerate_id(true);
 
             $_SESSION['usuario_id'] = $usuario['id'];
             $_SESSION['nome'] = $usuario['nome'];
@@ -44,11 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Atualiza o token após autenticação.
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
-            header('Location: dashboard.php');
-            exit;
+                header('Location: dashboard.php');
+                exit;
+            }
+        } else {
+            $erro = 'E-mail ou senha incorretos.';
         }
-
-        $erro = 'E-mail ou senha incorretos.';
     }
 }
 ?>
@@ -105,6 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if (isset($_GET['cadastro'])): ?>
             <section class="alert alert-success">
                 Cadastro realizado! Faça login para continuar.
+            </section>
+        <?php endif; ?>
+
+        <?php if (isset($_GET['bloqueada'])): ?>
+            <section class="alert alert-error">
+                Sua conta está bloqueada ou não está mais disponível.
             </section>
         <?php endif; ?>
 
