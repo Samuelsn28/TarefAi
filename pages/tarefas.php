@@ -239,11 +239,11 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
 
 ?>
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="<?= (($_SESSION['tema'] ?? 'claro') === 'escuro') ? 'escuro' : 'claro' ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarefas | TarefAi</title>
+    <title>Tarefas | TarefAí</title>
     <link rel="stylesheet" href="../css/dashboard.css">
     <style>
         .tarefas-page {
@@ -265,7 +265,7 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
 
         .tarefas-header p {
             margin: 0;
-            color: var(--text-secondary, #64748b);
+            color: var(--text-secondary);
         }
 
         .tarefas-indicadores {
@@ -277,14 +277,14 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
 
         .tarefa-indicador {
             padding: 20px;
-            border: 1px solid var(--border-color, #e2e8f0);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            background: var(--card-bg, #fff);
+            background: var(--white);
         }
 
         .tarefa-indicador span {
             display: block;
-            color: var(--text-secondary, #64748b);
+            color: var(--text-secondary);
             font-size: 13px;
             margin-bottom: 8px;
         }
@@ -302,9 +302,9 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
             gap: 12px;
             padding: 18px;
             margin-bottom: 18px;
-            border: 1px solid var(--border-color, #e2e8f0);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            background: var(--card-bg, #fff);
+            background: var(--white);
         }
 
         .tarefas-campo {
@@ -324,9 +324,9 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
             width: 100%;
             min-height: 40px;
             padding: 8px 11px;
-            border: 1px solid var(--border-color, #cbd5e1);
+            border: 1px solid var(--border-strong);
             border-radius: 8px;
-            background: var(--input-bg, #fff);
+            background: var(--input-background);
             color: inherit;
         }
 
@@ -335,7 +335,7 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
             padding: 8px 16px;
             border: 0;
             border-radius: 8px;
-            background: var(--primary-color, #4f46e5);
+            background: var(--primary);
             color: #fff;
             font-weight: 600;
             cursor: pointer;
@@ -346,15 +346,15 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
         }
 
         .tarefas-botao-secundario {
-            background: var(--surface-secondary, #e2e8f0);
-            color: var(--text-primary, #334155);
+            background: var(--surface-soft);
+            color: var(--text);
         }
 
         .tarefas-tabela-container {
             overflow-x: auto;
-            border: 1px solid var(--border-color, #e2e8f0);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            background: var(--card-bg, #fff);
+            background: var(--white);
         }
 
         .tarefas-tabela {
@@ -367,12 +367,12 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
         .tarefas-tabela td {
             padding: 14px 16px;
             text-align: left;
-            border-bottom: 1px solid var(--border-color, #e2e8f0);
+            border-bottom: 1px solid var(--border);
             vertical-align: middle;
         }
 
         .tarefas-tabela th {
-            color: var(--text-secondary, #64748b);
+            color: var(--text-secondary);
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
@@ -385,7 +385,7 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
 
         .tarefa-nome {
             display: block;
-            color: var(--text-primary, #0f172a);
+            color: var(--text);
             font-weight: 600;
             text-decoration: none;
         }
@@ -393,7 +393,7 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
         .tarefa-projeto {
             display: inline-block;
             margin-top: 5px;
-            color: var(--text-secondary, #64748b);
+            color: var(--text-secondary);
             font-size: 12px;
             text-decoration: none;
         }
@@ -409,18 +409,18 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
         }
 
         .tarefa-status-pendente {
-            background: #fff7ed;
-            color: #c2410c;
+            background: var(--warning-bg);
+            color: var(--warning-text);
         }
 
         .tarefa-status-concluida {
-            background: #ecfdf5;
-            color: #047857;
+            background: var(--success-bg);
+            color: var(--success-text);
         }
 
         .tarefa-categorias,
         .tarefa-responsaveis {
-            color: var(--text-secondary, #64748b);
+            color: var(--text-secondary);
             font-size: 13px;
             line-height: 1.5;
         }
@@ -428,13 +428,13 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
         .tarefas-vazio {
             padding: 48px 20px;
             text-align: center;
-            color: var(--text-secondary, #64748b);
+            color: var(--text-secondary);
         }
 
         .tarefas-vazio strong {
             display: block;
             margin-bottom: 8px;
-            color: var(--text-primary, #334155);
+            color: var(--text);
             font-size: 17px;
         }
 
@@ -445,7 +445,7 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
             flex-wrap: wrap;
             gap: 12px;
             padding: 16px 2px;
-            color: var(--text-secondary, #64748b);
+            color: var(--text-secondary);
             font-size: 13px;
         }
 
@@ -463,15 +463,15 @@ $ultimoItem = min($offset + $limite, $totalFiltrado);
             align-items: center;
             justify-content: center;
             padding: 5px 9px;
-            border: 1px solid var(--border-color, #e2e8f0);
+            border: 1px solid var(--border);
             border-radius: 7px;
             color: inherit;
             text-decoration: none;
         }
 
         .tarefas-paginacao .atual {
-            background: var(--primary-color, #4f46e5);
-            border-color: var(--primary-color, #4f46e5);
+            background: var(--primary);
+            border-color: var(--primary);
             color: #fff;
         }
 

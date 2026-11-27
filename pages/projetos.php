@@ -409,13 +409,13 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 ?>
 
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="<?= (($_SESSION['tema'] ?? 'claro') === 'escuro') ? 'escuro' : 'claro' ?>">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Projetos | TarefAi</title>
+    <title>Projetos | TarefAí</title>
 
     <link rel="stylesheet" href="../css/dashboard.css">
 
@@ -435,16 +435,16 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .projects-toolbar p {
-            color: #64748b;
+            color: var(--text-secondary);
             font-size: 14px;
         }
 
         .project-form-card {
-            background: #fff;
+            background: var(--white);
             border-radius: 14px;
             padding: 24px;
             margin-bottom: 25px;
-            border: 1px solid #e8edf3;
+            border: 1px solid var(--border);
         }
 
         .project-form-card h3 {
@@ -472,8 +472,10 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         .project-form input,
         .search-form input {
             width: 100%;
+            background: var(--input-background);
+            color: var(--text);
             padding: 12px 14px;
-            border: 1px solid #dce2ea;
+            border: 1px solid var(--border-strong);
             border-radius: 9px;
             outline: none;
             font-size: 14px;
@@ -481,7 +483,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 
         .project-form input:focus,
         .search-form input:focus {
-            border-color: #635bdb;
+            border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(99, 91, 219, .1);
         }
 
@@ -493,7 +495,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .btn-submit {
-            background: #635bdb;
+            background: var(--primary);
             color: #fff;
             border: 0;
             border-radius: 9px;
@@ -503,8 +505,8 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .btn-cancel {
-            background: #f1f5f9;
-            color: #475569;
+            background: var(--surface-soft);
+            color: var(--text-secondary);
             padding: 12px 17px;
             border-radius: 9px;
             text-decoration: none;
@@ -523,7 +525,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .btn-search {
-            background: #334155;
+            background: var(--primary-dark);
             color: #fff;
             border: 0;
             padding: 12px 19px;
@@ -542,8 +544,8 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .projects-table th {
-            background: #f8fafc;
-            color: #64748b;
+            background: var(--surface-muted);
+            color: var(--text-secondary);
             text-align: left;
             font-size: 12px;
             text-transform: uppercase;
@@ -553,7 +555,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 
         .projects-table td {
             padding: 17px 15px;
-            border-bottom: 1px solid #edf0f4;
+            border-bottom: 1px solid var(--border);
             font-size: 14px;
         }
 
@@ -570,18 +572,18 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             align-items: center;
             justify-content: center;
             border-radius: 10px;
-            background: #eeedff;
-            color: #635bdb;
+            background: var(--surface-primary);
+            color: var(--primary);
             font-size: 18px;
         }
 
         .project-name strong {
-            color: #1e293b;
+            color: var(--text);
         }
 
         .project-name small {
             display: block;
-            color: #94a3b8;
+            color: var(--text-muted);
             margin-top: 4px;
         }
 
@@ -595,18 +597,18 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .action-access {
-            background: #ecfdf5;
-            color: #059669;
+            background: var(--success-bg);
+            color: var(--success-text);
         }
 
         .action-edit {
-            background: #eef2ff;
-            color: #4f46e5;
+            background: var(--info-bg);
+            color: var(--primary);
         }
 
         .action-delete {
-            background: #fef2f2;
-            color: #dc2626;
+            background: var(--danger-bg);
+            color: var(--danger-text);
             border: 0;
             cursor: pointer;
         }
@@ -617,7 +619,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 
         .permission-label {
             font-size: 11px;
-            color: #64748b;
+            color: var(--text-secondary);
             white-space: nowrap;
         }
 
@@ -630,19 +632,19 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .alert-success {
-            color: #166534;
-            background: #dcfce7;
+            color: var(--success-text);
+            background: var(--success-bg);
         }
 
         .alert-error {
-            color: #991b1b;
-            background: #fee2e2;
+            color: var(--danger-text);
+            background: var(--danger-bg);
         }
 
         .empty-state {
             text-align: center;
             padding: 45px 20px;
-            color: #64748b;
+            color: var(--text-secondary);
         }
 
         .empty-state span {
@@ -669,18 +671,18 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         }
 
         .pagination a {
-            background: #f1f5f9;
-            color: #475569;
+            background: var(--surface-soft);
+            color: var(--text-secondary);
         }
 
         .pagination .current {
-            background: #635bdb;
+            background: var(--primary);
             color: #fff;
             font-weight: 600;
         }
 
         .pagination-info {
-            color: #64748b;
+            color: var(--text-secondary);
             text-align: center;
             font-size: 13px;
             margin-top: 15px;
@@ -745,22 +747,6 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             <div>
                 <span class="topbar-label">GERENCIAMENTO</span>
                 <h1>Projetos</h1>
-            </div>
-
-            <div class="topbar-user">
-
-                <div class="topbar-avatar">
-                    <?= escapar(strtoupper(substr($nomeUsuario, 0, 1))) ?>
-                </div>
-
-                <div>
-                    <strong><?= escapar($nomeUsuario) ?></strong>
-
-                    <span>
-                        <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
-                    </span>
-                </div>
-
             </div>
 
         </header>
@@ -1160,7 +1146,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         <footer class="dashboard-footer">
 
             <span>
-                © <?= date('Y') ?> TarefAi. Gestão de tarefas em equipe.
+                © <?= date('Y') ?> TarefAí. Gestão de tarefas em equipe.
             </span>
 
             <span>

@@ -57,7 +57,7 @@ if ($convite['status'] !== 'pendente' || strtotime($convite['expira_em']) < time
 
 if ($emailUsuario === '' || $emailUsuario !== mb_strtolower($convite['email'], 'UTF-8')) {
     http_response_code(403);
-    exit('Entre no TarefAi com o e-mail convidado (' . conviteEscapar($convite['email']) . ') para aceitar este convite.');
+    exit('Entre no TarefAí com o e-mail convidado (' . conviteEscapar($convite['email']) . ') para aceitar este convite.');
 }
 
 $erro = null;
@@ -118,7 +118,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aceitar convite - TarefAi</title>
+    <title>Aceitar convite - TarefAí</title>
     <link rel="stylesheet" href="/TarefAi/css/geral.css">
     <style>
         body{min-height:100vh;display:grid;place-items:center;background:#f1f5f9;padding:20px}

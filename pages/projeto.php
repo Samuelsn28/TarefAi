@@ -923,11 +923,11 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
 ?>
 
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="<?= (($_SESSION['tema'] ?? 'claro') === 'escuro') ? 'escuro' : 'claro' ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarefas - TarefAi</title>
+    <title>Tarefas - TarefAí</title>
     <link rel="stylesheet" href="../css/dashboard.css">
 
     <style>
@@ -936,18 +936,18 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     }
 
     .breadcrumb {
-        color: #64748b;
+        color: var(--text-secondary);
         font-size: 14px;
         margin-bottom: 12px;
     }
 
     .breadcrumb a {
-        color: #64748b;
+        color: var(--text-secondary);
         text-decoration: none;
     }
 
     .breadcrumb a:hover {
-        color: #4f46e5;
+        color: var(--primary);
     }
 
     .project-heading {
@@ -960,13 +960,13 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
 
     .project-heading h1 {
         margin: 0 0 6px;
-        color: #1e293b;
+        color: var(--text);
         font-size: 26px;
     }
 
     .project-heading p {
         margin: 0;
-        color: #64748b;
+        color: var(--text-secondary);
         font-size: 14px;
     }
 
@@ -977,7 +977,7 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     .invite-card,
     .task-form-card,
     .task-list-card {
-        background: #fff;
+        background: var(--white);
         border-radius: 14px;
         padding: 24px;
         box-shadow: 0 2px 12px rgba(15, 23, 42, .05);
@@ -985,7 +985,7 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     }
 
     .invite-card p {
-        color: #64748b;
+        color: var(--text-secondary);
         font-size: 13px;
         line-height: 1.5;
         margin: -8px 0 18px;
@@ -1010,8 +1010,8 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     }
 
     .team-member {
-        background: #f1f5f9;
-        color: #475569;
+        background: var(--surface-soft);
+        color: var(--text-secondary);
         border-radius: 20px;
         padding: 6px 10px;
         font-size: 12px;
@@ -1027,7 +1027,7 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
 
     .card-heading h2 {
         margin: 0;
-        color: #1e293b;
+        color: var(--text);
         font-size: 18px;
     }
 
@@ -1039,24 +1039,24 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
         display: block;
         font-size: 14px;
         font-weight: 600;
-        color: #334155;
+        color: var(--text);
         margin-bottom: 8px;
     }
 
     .form-control {
         width: 100%;
         box-sizing: border-box;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--border-strong);
         border-radius: 8px;
         padding: 11px 13px;
         font-size: 14px;
-        color: #1e293b;
-        background: #fff;
+        color: var(--text);
+        background: var(--white);
         outline: none;
     }
 
     .form-control:focus {
-        border-color: #6366f1;
+        border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(99, 102, 241, .12);
     }
 
@@ -1070,17 +1070,17 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
         padding: 9px 12px;
         border-radius: 8px;
         font-size: 13px;
-        color: #475569;
+        color: var(--text-secondary);
         cursor: pointer;
     }
 
     .selection-item input {
-        accent-color: #4f46e5;
+        accent-color: var(--primary);
     }
 
     .form-actions {
@@ -1105,31 +1105,31 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     }
 
     .btn-primary {
-        background: #4f46e5;
+        background: var(--primary);
         color: #fff;
     }
 
     .btn-primary:hover {
-        background: #4338ca;
+        background: var(--primary-dark);
     }
 
     .btn-secondary {
-        background: #e2e8f0;
-        color: #334155;
+        background: var(--surface-soft);
+        color: var(--text);
     }
 
     .btn-secondary:hover {
-        background: #cbd5e1;
+        background: var(--border-strong);
     }
 
     .btn-danger {
-        background: #fee2e2;
-        color: #b91c1c;
+        background: var(--danger-bg);
+        color: var(--danger-text);
     }
 
     .btn-success {
-        background: #dcfce7;
-        color: #15803d;
+        background: var(--success-bg);
+        color: var(--success-text);
     }
 
     .filter-form {
@@ -1149,7 +1149,7 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
         justify-content: space-between;
         gap: 18px;
         padding: 18px 0;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid var(--border);
     }
 
     .task-item:last-child {
@@ -1168,7 +1168,7 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
         width: 19px;
         height: 19px;
         margin-top: 3px;
-        accent-color: #16a34a;
+        accent-color: var(--green);
         cursor: pointer;
         flex-shrink: 0;
     }
@@ -1185,14 +1185,14 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     .task-name {
         font-size: 15px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
         margin: 0 0 8px;
         overflow-wrap: anywhere;
     }
 
     .task-name.completed {
         text-decoration: line-through;
-        color: #94a3b8;
+        color: var(--text-muted);
     }
 
     .task-meta {
@@ -1200,7 +1200,7 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
         flex-wrap: wrap;
         gap: 8px 15px;
         font-size: 12px;
-        color: #64748b;
+        color: var(--text-secondary);
     }
 
     .task-tags {
@@ -1217,8 +1217,8 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
         font-size: 11px;
         padding: 5px 9px;
         border-radius: 20px;
-        background: #f1f5f9;
-        color: #475569;
+        background: var(--surface-soft);
+        color: var(--text-secondary);
     }
 
     .task-tag-color {
@@ -1247,13 +1247,13 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     }
 
     .action-edit {
-        background: #e0e7ff;
-        color: #4338ca;
+        background: var(--info-bg);
+        color: var(--primary-dark);
     }
 
     .action-delete {
-        background: #fee2e2;
-        color: #b91c1c;
+        background: var(--danger-bg);
+        color: var(--danger-text);
     }
 
     .status-badge {
@@ -1265,13 +1265,13 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     }
 
     .status-pending {
-        background: #fef3c7;
-        color: #92400e;
+        background: var(--warning-bg);
+        color: var(--warning-text);
     }
 
     .status-completed {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--success-bg);
+        color: var(--success-text);
     }
 
     .alert {
@@ -1282,23 +1282,23 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
     }
 
     .alert-success {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--success-bg);
+        color: var(--success-text);
     }
 
     .alert-error {
-        background: #fee2e2;
-        color: #991b1b;
+        background: var(--danger-bg);
+        color: var(--danger-text);
     }
 
     .empty-state {
         text-align: center;
         padding: 45px 15px;
-        color: #64748b;
+        color: var(--text-secondary);
     }
 
     .empty-state h3 {
-        color: #334155;
+        color: var(--text);
         margin-bottom: 8px;
     }
 
@@ -1317,12 +1317,12 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
         border-radius: 7px;
         font-size: 13px;
         text-decoration: none;
-        background: #f1f5f9;
-        color: #475569;
+        background: var(--surface-soft);
+        color: var(--text-secondary);
     }
 
     .pagination .active {
-        background: #4f46e5;
+        background: var(--primary);
         color: #fff;
     }
 
@@ -1333,11 +1333,11 @@ unset($_SESSION['convite_link_gerado'], $_SESSION['convite_email_gerado']);
 
     .task-count {
         font-size: 13px;
-        color: #64748b;
+        color: var(--text-secondary);
     }
 
     .completion-hint {
-        color: #94a3b8;
+        color: var(--text-muted);
         font-size: 11px;
         margin-top: 6px;
     }

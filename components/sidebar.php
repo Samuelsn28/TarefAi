@@ -107,8 +107,8 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         overflow-x: hidden;
         overflow-y: auto;
 
-        background: #ffffff;
-        border-right: 1px solid #eceef4;
+        background: var(--white);
+        border-right: 1px solid var(--border);
 
         padding: 28px 18px;
 
@@ -135,7 +135,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
         font-size: 23px;
         font-weight: 800;
-        color: #20243a;
+        color: var(--text);
 
         flex-shrink: 0;
     }
@@ -175,7 +175,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
     .nav-label {
         font-size: 10px;
         font-weight: 800;
-        color: #a1a4b5;
+        color: var(--text-muted);
         letter-spacing: 1.2px;
 
         margin: 22px 12px 8px;
@@ -195,7 +195,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         font-size: 14px;
         font-weight: 600;
 
-        color: #777b91;
+        color: var(--text-light);
         text-decoration: none;
 
         transition: 0.2s;
@@ -205,13 +205,13 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
     }
 
     .nav-item:hover {
-        background: #f3f2ff;
-        color: #635bdb;
+        background: var(--surface-hover);
+        color: var(--primary);
     }
 
     .nav-item.active {
-        background: #efedff;
-        color: #635bdb;
+        background: var(--surface-primary);
+        color: var(--primary);
     }
 
     /* =====================================
@@ -232,7 +232,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         align-items: center;
         justify-content: center;
 
-        background: #e05d65;
+        background: var(--danger);
         color: #fff;
 
         font-size: 10px;
@@ -254,7 +254,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
         margin-top: auto;
         padding-top: 25px;
 
-        border-top: 1px solid #eceef4;
+        border-top: 1px solid var(--border);
 
         flex-shrink: 0;
     }
@@ -268,16 +268,15 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
     }
 
     .sidebar-user-link:hover {
-        background: #f3f2ff;
+        background: var(--surface-hover);
     }
 
     .sidebar-user {
         display: flex;
+        justify-content: center;
         align-items: center;
         gap: 11px;
-
-        margin-bottom: 20px;
-        padding: 0 5px;
+        padding: 10px 5px;
 
         min-width: 0;
     }
@@ -289,8 +288,8 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
         border-radius: 50%;
 
-        background: #eeecff;
-        color: #635bdb;
+        background: var(--surface-primary);
+        color: var(--primary);
 
         display: flex;
         justify-content: center;
@@ -311,13 +310,13 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
     .user-info strong {
         font-size: 13px;
-        color: #20243a;
+        color: var(--text);
         overflow-wrap: anywhere;
     }
 
     .user-info span {
         font-size: 11px;
-        color: #85899e;
+        color: var(--text-light);
     }
 
     .logout-link {
@@ -327,7 +326,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
         padding: 12px;
 
-        color: #e05d65;
+        color: var(--danger);
 
         font-size: 13px;
         font-weight: 600;
@@ -337,7 +336,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
     }
 
     .logout-link:hover {
-        background: #fff1f1;
+        background: var(--danger-bg);
     }
 
     /* =====================================
@@ -414,7 +413,7 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
 
         <section class="brand-logo">T</section>
 
-        <span>TarefAi</span>
+        <span>TarefAí</span>
 
     </section>
 
@@ -502,6 +501,8 @@ $sidebarPrimeiraLetra = function_exists('mb_strtoupper')
                 </section>
             </section>
         </a>
+
+        <section style="margin-bottom: 10px"></section>
 
         <a href="logout.php" class="logout-link">
             <span>↪</span>

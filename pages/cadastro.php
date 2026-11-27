@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Criar conta | TarefAi</title>
+    <title>Criar conta | TarefAí</title>
 
     <link rel="stylesheet" href="../css/geral.css">
     <script src="../scripts/js/auth.js" defer></script>
@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <section class="auth-brand">
         <section class="brand-logo">T</section>
 
-        <h1>TarefAi</h1>
+        <h1>TarefAí</h1>
 
         <p>
             Organize seus projetos,
@@ -147,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <p>
                 Preencha seus dados para entrar
-                no TarefAi.
+                no TarefAí.
             </p>
         </section>
 

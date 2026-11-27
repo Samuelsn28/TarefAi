@@ -67,30 +67,30 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 $nomeUsuario = $_SESSION['nome'] ?? 'Usuário';
 ?>
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="<?= (($_SESSION['tema'] ?? 'claro') === 'escuro') ? 'escuro' : 'claro' ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notificações | TarefAi</title>
+    <title>Notificações | TarefAí</title>
     <link rel="stylesheet" href="../css/dashboard.css">
     <style>
         .notifications-content { padding: 30px; }
         .notifications-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
-        .notifications-header h1 { font-size:26px; margin-bottom:6px; color:#20243a; }
-        .notifications-header p { color:#85899e; font-size:13px; }
-        .notification-card { background:#fff; border:1px solid #eceef4; border-radius:13px; padding:18px 20px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
-        .notification-card.unread { border-left:4px solid #635bdb; background:#fbfaff; }
+        .notifications-header h1 { font-size:26px; margin-bottom:6px; color:var(--text); }
+        .notifications-header p { color:var(--text-light); font-size:13px; }
+        .notification-card { background:var(--white); border:1px solid var(--border); border-radius:13px; padding:18px 20px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+        .notification-card.unread { border-left:4px solid var(--primary); background:var(--surface-primary); }
         .notification-main { min-width:0; flex:1; }
-        .notification-main h2 { font-size:15px; color:#20243a; margin-bottom:7px; }
-        .notification-main p { color:#666b80; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
-        .notification-date { display:block; color:#999cad; font-size:11px; margin-top:9px; }
+        .notification-main h2 { font-size:15px; color:var(--text); margin-bottom:7px; }
+        .notification-main p { color:var(--text-secondary); font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+        .notification-date { display:block; color:var(--text-muted); font-size:11px; margin-top:9px; }
         .notification-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
         .notification-link, .notification-button { border:0; border-radius:7px; padding:8px 11px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none; white-space:nowrap; }
-        .notification-link { background:#efedff; color:#5148c7; }
-        .notification-button { background:#f1f2f7; color:#555b70; }
-        .notification-empty { background:#fff; border:1px solid #eceef4; border-radius:13px; padding:55px 20px; text-align:center; color:#85899e; }
-        .notification-empty strong { display:block; color:#20243a; margin-bottom:8px; font-size:16px; }
-        .btn-mark-all { border:0; border-radius:8px; padding:10px 14px; background:#efedff; color:#5148c7; font-weight:700; cursor:pointer; }
+        .notification-link { background:var(--surface-primary); color:var(--primary-dark); }
+        .notification-button { background:var(--surface-soft); color:var(--text-secondary); }
+        .notification-empty { background:var(--white); border:1px solid var(--border); border-radius:13px; padding:55px 20px; text-align:center; color:var(--text-light); }
+        .notification-empty strong { display:block; color:var(--text); margin-bottom:8px; font-size:16px; }
+        .btn-mark-all { border:0; border-radius:8px; padding:10px 14px; background:var(--surface-primary); color:var(--primary-dark); font-weight:700; cursor:pointer; }
         @media(max-width:650px) {
             .notifications-content { padding:18px; }
             .notifications-header { align-items:flex-start; flex-direction:column; }

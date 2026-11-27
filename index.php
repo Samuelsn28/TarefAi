@@ -12,8 +12,8 @@ if (!empty($_SESSION['usuario_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="TarefAi: organize projetos, acompanhe tarefas e mantenha sua equipe em sintonia.">
-    <title>TarefAi | Organize ideias. Faça acontecer.</title>
+    <meta name="description" content="TarefAí: organize projetos, acompanhe tarefas e mantenha sua equipe em sintonia.">
+    <title>TarefAí | Organize ideias. Faça acontecer.</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -22,8 +22,8 @@ if (!empty($_SESSION['usuario_id'])) {
 <body>
 <header class="site-header">
     <nav class="nav container" aria-label="Navegação principal">
-        <a class="brand" href="index.php" aria-label="TarefAi - início">
-            <span class="brand-mark">T</span><span>Taref<span class="brand-ai">Ai</span></span>
+        <a class="brand" href="index.php" aria-label="TarefAí - início">
+            <span class="brand-mark">T</span><span>Taref<span class="brand-ai">Aí</span></span>
         </a>
         <section class="nav-links">
             <a href="#recursos">Recursos</a>
@@ -49,12 +49,12 @@ if (!empty($_SESSION['usuario_id'])) {
             <section class="hero-note"><span class="note-check">✓</span> Um espaço simples para manter tudo em movimento.</section>
         </section>
 
-        <section class="hero-visual" aria-label="Prévia ilustrativa do painel TarefAi">
+        <section class="hero-visual" aria-label="Prévia ilustrativa do painel TarefAí">
             <section class="visual-glow"></section>
             <section class="dashboard-window">
                 <section class="window-top">
                     <section class="window-dots"><i></i><i></i><i></i></section>
-                    <span>tarefai / painel</span>
+                    <span>Tarefaí / painel</span>
                     <span class="window-avatar">A</span>
                 </section>
                 <section class="preview-content">
@@ -133,7 +133,7 @@ if (!empty($_SESSION['usuario_id'])) {
             <section class="how-copy">
                 <section class="eyebrow">COMECE SEM COMPLICAÇÃO</section>
                 <h2>Do primeiro passo<br>ao <span>feito.</span></h2>
-                <p>O TarefAi foi pensado para deixar a organização mais leve. Crie seu espaço e comece a dar forma aos seus planos.</p>
+                <p>O TarefAí foi pensado para deixar a organização mais leve. Crie seu espaço e comece a dar forma aos seus planos.</p>
                 <a class="button" href="pages/cadastro.php">Criar minha conta <span aria-hidden="true">→</span></a>
             </section>
             <section class="steps">
@@ -145,7 +145,7 @@ if (!empty($_SESSION['usuario_id'])) {
     </section>
 
     <section class="final-cta container">
-        <section><section class="eyebrow">SEU PRÓXIMO PASSO COMEÇA AQUI</section><h2>Vamos tirar esse projeto do papel?</h2><p>Organize suas ideias e faça acontecer com o TarefAi.</p></section>
+        <section><section class="eyebrow">SEU PRÓXIMO PASSO COMEÇA AQUI</section><h2>Vamos tirar esse projeto do papel?</h2><p>Organize suas ideias e faça acontecer com o TarefAí.</p></section>
         <a class="button button-light" href="pages/cadastro.php">Começar agora <span aria-hidden="true">↗</span></a>
         <section class="cta-decoration">T</section>
     </section>
@@ -153,9 +153,9 @@ if (!empty($_SESSION['usuario_id'])) {
 
 <footer class="site-footer">
     <section class="container footer-inner">
-        <a class="brand footer-brand" href="index.php"><span class="brand-mark">T</span><span>Taref<span class="brand-ai">Ai</span></span></a>
+        <a class="brand footer-brand" href="index.php"><span class="brand-mark">T</span><span>Taref<span class="brand-ai">Aí</span></span></a>
         <span>Organize ideias. Faça acontecer.</span>
-        <span>© <?= date('Y') ?> TarefAi</span>
+        <span>© <?= date('Y') ?> TarefAí</span>
     </section>
 </footer>
 </body>

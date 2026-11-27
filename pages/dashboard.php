@@ -185,14 +185,14 @@ try {
 ?>
 
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="<?= (($_SESSION['tema'] ?? 'claro') === 'escuro') ? 'escuro' : 'claro' ?>">
 
 <head>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Dashboard | TarefAi</title>
+    <title>Dashboard | TarefAí</title>
 
     <link rel="stylesheet" href="../css/dashboard.css">
 
@@ -227,28 +227,6 @@ try {
                     </span>
 
                     <h1>Dashboard</h1>
-
-                </section>
-
-                <section class="topbar-user">
-
-                    <section class="topbar-avatar">
-                        <?= escapar(strtoupper(substr($nomeUsuario, 0, 1))) ?>
-                    </section>
-
-                    <div>
-
-                        <strong>
-                            <?= escapar($nomeUsuario) ?>
-
-                        </strong>
-
-                        <span>
-                            <?= $isAdmin ? 'Administrador' : 'Usuário comum' ?>
-                        </span>
-                        
-
-                    </div>
 
                 </section>
 
@@ -573,7 +551,7 @@ try {
             <footer class="dashboard-footer">
 
                 <span>
-                    © <?= date('Y') ?> TarefAi. Gestão de tarefas em equipe.
+                    © <?= date('Y') ?> TarefAí. Gestão de tarefas em equipe.
                 </span>
 
                 <span>

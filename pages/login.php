@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Entrar | TarefAi</title>
+    <title>Entrar | TarefAí</title>
 
     <link rel="stylesheet" href="../css/geral.css">
     <script src="../scripts/js/auth.js" defer></script>
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <section class="auth-brand">
         <section class="brand-logo">T</section>
 
-        <h1>TarefAi</h1>
+        <h1>TarefAí</h1>
 
         <p>
             Suas tarefas, seus projetos e sua equipe.
